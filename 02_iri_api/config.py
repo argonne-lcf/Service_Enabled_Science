@@ -17,7 +17,6 @@ class JobState(str, Enum):
     canceled = "canceled"
     
 
-
 class TaskStatus(str, Enum):
     pending = "pending"
     active = "active"
