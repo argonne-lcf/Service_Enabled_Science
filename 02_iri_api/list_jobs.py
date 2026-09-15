@@ -1,12 +1,6 @@
 import json
 import requests
-from alcf_tokens.auth import get_access_token, ServiceName
-
-# Build request headers with your IRI token
-headers = {
-    "Authorization": f"Bearer {get_access_token(ServiceName.iri)}",
-    "Content-Type": "application/json"
-}
+from config import HEADERS
 
 # Choose ALCF cluster
 resource_id = "55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
@@ -34,6 +28,6 @@ response = requests.post(
     f"https://api.alcf.anl.gov/api/v1/compute/status/{resource_id}",
     params=params,
     json=filters,
-    headers=headers,
+    headers=HEADERS,
 )
 print(json.dumps(response.json(), indent=2))
