@@ -8,7 +8,7 @@ import json
 import requests
 from config import HEADERS
 from time import sleep
-from utils import get_filesystem_id_from_path, get_task_status
+from utils import get_filesystem_id_from_path
 
 
 # Submit filesystem operation and get back a task ID
@@ -46,19 +46,28 @@ if __name__ == "__main__":
 
     # Submit filesytem operation and get back a task ID
     task_id = submit_view_file(args.file_path)
-
-    # Query task status every 2 seconds
     print(f"\nWaiting for filesystem task {task_id} to complete ...")
+
     while True:
+
+        # Query task status every 2 seconds
         sleep(2)
-        response = get_task_status(task_id)
+        response = requests.get(
+            f"https://api.alcf.anl.gov/api/v1/task/{task_id}",
+            headers=HEADERS
+        )
+        response = response.json()
+
+        # Report task status
         task_status = response.get("status")
         print(f"Current status: {task_status}")
+
+        # Exit loop if needed
         if task_status not in ["pending", "active"]:
+            print()
             break
 
-    # Print the error or the content of the file
-    print()
+    # Print error or file content
     if task_status == "failed":
         print(json.dumps(response["result"], indent=2))
     else:
