@@ -116,7 +116,7 @@ If successful, the above command should return the PBS job ID (**keep this ID fo
 }
 ```
 
-The job will execute the content of the `COMMANDS` field in your `.env` file. If you kept the default content from the above template, the job will run on 1 node and write your username and the compute node hostname in the `STDOUT_PATH` file (`/home/<your-ALCF-username>/log_example.out`).
+The job will execute the content of the `COMMANDS` field in your `.env` file. If you kept the default content from the above template, the job will run on 1 node and write your username and the compute node hostname in the `STDOUT_PATH` file (`/home/<your-alcf-username>/log_example.out`).
 
 Execute the following to query the state of your job:
 ```bash
@@ -129,12 +129,12 @@ Once the your job is `completed` or `failed`, continue to the next section.
 
 You can view the result of your jobs with Filesystem operations. If your PBS job completed, execute the following:
 ```bash
-python 05_view_file.py /home/<your-ALCF-username>/log_example.out
+python 05_view_file.py /home/<your-alcf-username>/log_example.out
 ```
 
 If your PBS job failed, execute the following:
 ```bash
-python 05_view_file.py /home/<your-ALCF-username>/log_example.err
+python 05_view_file.py /home/<your-alcf-username>/log_example.err
 ```
 
 All filesystem operations are asynchronous, meaning you will always get back a `task_id` when using the Filesystem component. The `05_view_file.py` script automatically checks the status of your task in a loop until it is completed. 
