@@ -9,7 +9,7 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-load_dotenv()
+load_dotenv(override=True)
 try:
     RESOURCE_ID = os.environ["RESOURCE_ID"]
     NODES = os.environ.get("NODES")
