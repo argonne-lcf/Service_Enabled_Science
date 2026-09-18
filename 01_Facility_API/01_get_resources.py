@@ -1,6 +1,6 @@
 """
 Script to query the status of all resources.
-Optional argument extract a resource based on its name.
+Optional argument to extract a resource based on its name.
 """
 
 import argparse
