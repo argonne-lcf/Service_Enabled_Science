@@ -14,8 +14,10 @@ from globus_compute_sdk.serialize import ComputeSerializer, AllCodeStrategies
 # MEP workers (python 3.13).
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
+CRUX_MEP = ""
 ACCOUNT = "alcf_training"
-QUEUE = "debug"
+POLARIS_QUEUE = "debug"
+CRUX_QUEUE = "debug"
 
 source = '''
 def adder(a, b):
@@ -40,12 +42,23 @@ polaris_gce = Executor(
     serializer=serializer,
     user_endpoint_config={
         "account": ACCOUNT,
-        "queue": QUEUE,
+        "queue": POLARIS_QUEUE,
+    },
+)
+crux_gce = Executor(
+    endpoint_id=CRUX_MEP,
+    serializer=serializer,
+    user_endpoint_config={
+        "account": ACCOUNT,
+        "queue": CRUX_QUEUE,
     },
 )
 
-print("Calling registered adder on the Polaris MEP, waiting for result...")
-future = polaris_gce.submit_to_registered_function(args=(5, 10), function_id=func_id)
-print(f"5 + 10 = {future.result()}")
 
+print("Calling registered adder on the Polaris MEP, waiting for result...")
+polaris_future = polaris_gce.submit_to_registered_function(args=(5, 10), function_id=func_id)
+crux_future = crux_gce.submit_to_registered_function(args=(2, 3), function_id=func_id)
+print(f"Polaris result: 5 + 10 = {polaris_future.result()}")
+print(f"Crux result: 2 + 3 = {crux_future.result()}")
 polaris_gce.shutdown()
+crux_gce.shutdown()

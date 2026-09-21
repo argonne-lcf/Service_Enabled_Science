@@ -1,9 +1,10 @@
 from globus_compute_sdk import Executor
 from globus_compute_sdk.serialize import ComputeSerializer, AllCodeStrategies
 
-# This script is intended to be run from an Aurora login node (UAN) as the
-# client.  It sends a function to the facility-supported Polaris multi-user
-# endpoint (MEP), which runs the function on a Polaris compute node.
+# This script is intended to be run from your local machine where you have
+# built the workshop client environment.  It sends a function to the 
+# facility-supported Polaris multi-user endpoint (MEP), which runs the 
+# function on a Polaris compute node by submitting a PBS job on the user's behalf.
 
 # The Polaris MEP is already running as a facility service -- there is no
 # endpoint for you to configure or start.  You only need its UUID.

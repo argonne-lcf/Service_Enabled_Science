@@ -2,12 +2,9 @@ from globus_compute_sdk import Executor
 from globus_compute_sdk.serialize import ComputeSerializer, AllCodeStrategies
 from concurrent.futures import as_completed
 
-# Run from an Aurora UAN against the Polaris MEP.
-#
-# Unlike a single-user endpoint (which is configured once with a yaml file),
-# a MEP user endpoint is configured at *submit time* through the
-# user_endpoint_config dictionary.  This example shows the common knobs and
-# how they affect where and how your functions run.
+# A multiuser globus compute endpoint is configured at *submit time* through the
+# user_endpoint_config dictionary.  This example shows some common options and
+# how to use them.
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
