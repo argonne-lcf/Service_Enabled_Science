@@ -11,8 +11,8 @@ POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 
 # Project and queue used to charge and schedule the PBS jobs the MEP submits
 # on your behalf.
-ACCOUNT = "ATPESC2026"
-QUEUE = "ATPESC"
+ACCOUNT = "alcf_training"
+QUEUE = "debug"
 
 
 # A simple function that reports the environment it runs in on Polaris.
@@ -24,7 +24,7 @@ def hello_affinity():
     import parsl
     import globus_compute_endpoint
 
-    return f""" Hello Aurora! I'm Polaris! Here's some of my info:
+    return f""" Hello! I'm Polaris! Here's some of my info:
                 hostname: {socket.gethostname()}
                 remote environment: {sys.executable}
                 python version: {sys.version}

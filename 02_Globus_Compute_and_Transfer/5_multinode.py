@@ -9,8 +9,8 @@ from concurrent.futures import as_completed
 # and request a multi-node block.  This example runs one function per node.
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
-ACCOUNT = "ATPESC2026"
-QUEUE = "ATPESC"
+ACCOUNT = "alcf_training"
+QUEUE = "debug"
 NUM_NODES = 2
 
 

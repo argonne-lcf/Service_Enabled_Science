@@ -10,8 +10,8 @@ from concurrent.futures import as_completed
 # how they affect where and how your functions run.
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
-ACCOUNT = "ATPESC2026"
-QUEUE = "ATPESC"
+ACCOUNT = "alcf_training"
+QUEUE = "debug"
 
 
 def where_am_i(task_id, sleeptime):

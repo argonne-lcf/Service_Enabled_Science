@@ -9,8 +9,8 @@ from globus_compute_sdk.serialize import ComputeSerializer, AllCodeStrategies
 # stands in for the path to a real compiled executable.
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
-ACCOUNT = "ATPESC2026"
-QUEUE = "ATPESC"
+ACCOUNT = "alcf_training"
+QUEUE = "debug"
 
 
 def host_sleep_wrapper(sleeptime):

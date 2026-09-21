@@ -195,6 +195,50 @@ Note the `place=scatter` line, which is important for multi-node jobs so the blo
 python 5_multinode.py
 ```
 
+## 7. Running a Globus Flow (`7_run_flow.py`)
+
+A [Globus Flow](https://docs.globus.org/api/flows/) chains actions run by different Globus services into a single, automated, **server-side** pipeline.  Once you start a run, Globus itself drives each step to completion — your script only starts the run and watches its status.
+
+This exercise builds a two-action flow:
+
+1. **TransferFile** — transfer the test file from `eagle` to `home`, using the [Transfer action provider](https://docs.globus.org/api/transfer/action-providers/transfer/).  This is the same transfer as `6_transfer_file.py`, but now driven by the flow rather than by a `TransferClient` in your script.
+2. **RunAdder** — run the registered `adder` function (from exercise 3) on the Polaris MEP, using the [Compute action provider](https://globus-compute.readthedocs.io/en/stable/actionprovider.html).  The transfer must finish before this step begins.
+
+Each action is a state in the flow definition.  `Next`/`End` wire them in sequence:
+
+```python
+"TransferFile": {
+    "Type": "Action",
+    "ActionUrl": "https://transfer.actions.globus.org/transfer",
+    "Parameters": {
+        "source_endpoint": EAGLE_COLLECTION,
+        "destination_endpoint": HOME_COLLECTION,
+        "DATA": [{"source_path": SRC_PATH, "destination_path": DST_PATH}],
+    },
+    "Next": "RunAdder",
+},
+"RunAdder": {
+    "Type": "Action",
+    "ActionUrl": "https://compute.actions.globus.org/v3",
+    "Parameters": {
+        "endpoint_id": POLARIS_MEP,
+        "tasks": [{"function_id": func_id, "kwargs": {"a": 5, "b": 10}}],
+        "user_endpoint_config": {"account": ACCOUNT, "queue": QUEUE},
+    },
+    "End": True,
+},
+```
+
+**Prerequisite:** run `3_register_function.py` first — it writes the `adder` function id to `REGISTERED_FUNC_ID`, which this script reads.
+
+**Authentication and scopes.**  Like the transfer exercises, this reuses the public native client bundled with `alcf_tokens`, so **no user-specified client id is needed**.  There is one subtlety worth understanding: starting the flow needs the flow's own scope, and because the flow drives Transfer on your behalf, that scope needs the Transfer scope as a *dependency* — which in turn needs each mapped collection's `data_access` scope.  The script builds this nested scope explicitly (see `run_flow_scope`), so the first run prompts for the right consents.
+
+```bash
+python 7_run_flow.py
+```
+
+The script registers the flow, starts a run, prints a `https://app.globus.org/runs/<run_id>` link you can watch in the web app, and polls until the run reaches `SUCCEEDED` or `FAILED`.  Expect a few minutes: the transfer runs first, then the MEP has to start a PBS job on Polaris for the `adder` step.
+
 # Troubleshooting
 
 ## Runaway job submission
