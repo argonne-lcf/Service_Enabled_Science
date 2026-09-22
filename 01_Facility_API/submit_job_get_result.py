@@ -1,18 +1,31 @@
 import json
 import requests
+import sys
 from time import sleep
-from config import (
-    HEADERS,
-    RESOURCE_ID,
-    COMMANDS,
-    STDOUT_PATH,
-    STDERR_PATH,
-    NODES,
-    WALLTIME_SEC,
-    QUEUE,
-    COMPUTE_ALLOCATION,
-)
-from utils import get_filesystem_id_from_path
+
+from utils import HEADERS, get_filesystem_id_from_path
+
+# Select compute cluster
+RESOURCE_ID="8b9b42f7-572a-4909-8472-a0453436304c" # Crux
+#RESOURCE_ID="55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
+
+# Define job submission parameters
+NODES=1
+WALLTIME_SEC=300
+QUEUE="debug"
+COMPUTE_ALLOCATION="alcf_training"
+STDOUT_PATH="/home/<your-alcf-username>/log_example.out"
+STDERR_PATH="/home/<your-alcf-username>/log_example.err"
+
+# Define commands to be executed
+COMMANDS="""
+echo Start
+sleep 5
+whoami
+hostname
+echo End
+"""
+
 
 print("\n==========")
 print("SUBMIT JOB")
@@ -60,7 +73,7 @@ while True:
     )
     response = response.json()
     job_state = response["status"]["state"]
-    print(f"  Current state: {job_state}")
+    print(f"Current state: {job_state}")
     if job_state not in ("queued", "active"):
         break
 
@@ -85,6 +98,10 @@ response = requests.get(
 response = response.json()
 print(json.dumps(response, indent=2))
 
+# Exit if filesystem submission failed
+if response.get("status_code") != 200:
+    sys.exit(1)
+
 # Extract task ID
 task_id = response["task_id"]
 print(f"\nWaiting for filesystem task {task_id} to complete ...")
@@ -98,7 +115,7 @@ while True:
     )
     response = response.json()
     task_status = response["status"]
-    print(f"  Current status: {task_status}")
+    print(f"Current status: {task_status}")
     if task_status not in ("pending", "active"):
         print()
         break
