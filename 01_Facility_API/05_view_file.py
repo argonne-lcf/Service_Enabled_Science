@@ -6,9 +6,9 @@ TODO: Pass the absolute path of the file when calling this script.
 import argparse
 import json
 import requests
-from config import HEADERS
 from time import sleep
-from utils import get_filesystem_id_from_path
+
+from utils import HEADERS, get_filesystem_id_from_path
 
 
 # Submit filesystem operation and get back a task ID
