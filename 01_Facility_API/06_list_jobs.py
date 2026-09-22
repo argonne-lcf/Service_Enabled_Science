@@ -19,8 +19,8 @@ params = {
 }
 
 # Define filters
-#filters = {}
-filters = {"states": ["active"]}
+filters = {}
+#filters = {"states": ["active"]}
 #filters = {"states": ["active", "queued"]}
 #filters = {"owner": "<your-alcf-username>"}
 #filters = {"jobIds": ["12345", "12346", "12347"]}
