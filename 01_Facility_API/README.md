@@ -100,7 +100,7 @@ python 05_view_file.py /home/<your-alcf-username>/log_example.err
 
 All filesystem operations are asynchronous, meaning you will always get back a `task_id` when using the Filesystem component. The `05_view_file.py` script automatically checks the status of your task in a loop until it is completed. 
 
-To trigger a pipeline that automatically goes through steps 2.b and 2.c, execute:
+To trigger a pipeline that automatically goes through steps 2.b and 2.c, execute the following (do not forget to edit your `STDOUT_PATH` and `STDERR_PATH` variables):
 ```bash
 python submit_job_get_result.py
 ```
