@@ -42,42 +42,6 @@ If you still get an error, logout from Globus by visiting [https://app.globus.or
 alcf-tokens login
 ```
 
-### 1.b. Environment Variables
-
-Some of the scripts in this demo rely on variables stored in an `.env` file, which are thereafter loaded with the `python-dotenv` package. Withing this folder (`01_Facility_API/`), create your `.env` file:
-```bash
-touch .env
-```
-and copy-paste the content below.
-
-```bash
-# =====================
-# JOB SUBMISSION CONFIG
-# =====================
-
-# Select compute cluster (here Polaris)
-RESOURCE_ID="55c1c993-1124-47f9-b823-514ba3849a9a"
-
-# Define job submission parameters
-NODES=1
-WALLTIME_SEC=300
-QUEUE="debug"
-COMPUTE_ALLOCATION="alcf_training"
-STDOUT_PATH="/home/<your-alcf-username>/log_example.out"
-STDERR_PATH="/home/<your-alcf-username>/log_example.err"
-
-# Define commands to be executed
-COMMANDS="
-echo Start
-sleep 5
-whoami
-hostname
-echo End
-"
-```
-
-By default, jobs will be submitted to Polaris, but you can change the `RESOURCE_ID` to target another HPC cluster. Make sure you replace placeholder values in the `.env` file with your ALCF username.
-
 ## 2. Main Exercises
 
 ### 2.a. View Resources and their Status
