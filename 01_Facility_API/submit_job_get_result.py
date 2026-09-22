@@ -98,10 +98,6 @@ response = requests.get(
 response = response.json()
 print(json.dumps(response, indent=2))
 
-# Exit if filesystem submission failed
-if response.get("status_code") != 200:
-    sys.exit(1)
-
 # Extract task ID
 task_id = response["task_id"]
 print(f"\nWaiting for filesystem task {task_id} to complete ...")
