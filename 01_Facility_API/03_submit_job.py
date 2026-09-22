@@ -8,7 +8,6 @@ import requests
 
 from utils import HEADERS
 
-
 # Select compute cluster
 #RESOURCE_ID="8b9b42f7-572a-4909-8472-a0453436304c" # Crux
 RESOURCE_ID="55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
