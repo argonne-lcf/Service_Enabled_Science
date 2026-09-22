@@ -111,7 +111,7 @@ python submit_job_get_result.py
 
 Execute the following to query a list of jobs:
 ```bash
-python 06_list_jobs.py>
+python 06_list_jobs.py
 ```
 
 Edit the script directly to explore various filters in order to customize your list. Available filters are: 
