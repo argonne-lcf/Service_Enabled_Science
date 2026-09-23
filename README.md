@@ -2,6 +2,14 @@
 
 Demo materials for ALCF Service-Enabled Science Workshop
 
+## Quick Start
+
+`setup.sh` installs uv, the Python environment for the exercises, opencode, and Claude Code, then configures opencode for the [ALCF Inference Service](https://docs.alcf.anl.gov/services/inference-endpoints/):
+
+```bash
+./setup.sh
+```
+
 ## Python Environment Setup
 
 You will need a Python 3.10+ environment with the [`alcf-tokens`](https://pypi.org/project/alcf-tokens/) and [`alcf-ai`](https://pypi.org/project/alcf-ai/) packages installed.  
@@ -109,3 +117,30 @@ globus_transfer_token = get_access_token(ServiceName.globus_transfer)
 ### Troubleshooting
 
 If you have issues with your tokens, please logout from Globus by visiting [https://app.globus.org/logout](https://app.globus.org/logout), open a new incognito browser, and restart a new authentication flow. 
+
+## Coding Agents
+
+Run `./setup.sh` for the quick setup above, or install and configure the agents manually.
+
+Install the agents:
+
+```bash
+curl -fsSL https://opencode.ai/install | bash   # opencode
+curl -fsSL https://claude.ai/install.sh | bash  # Claude Code
+```
+
+The [Inference Endpoints guide](https://docs.alcf.anl.gov/services/inference-endpoints/#agents) also covers Codex, pi, and other harnesses.
+
+After [authenticating](#authentication), configure opencode:
+
+```bash
+uvx alcf-ai agent configure opencode
+```
+
+Configuring Claude Code is optional and works the same way:
+
+```bash
+uvx alcf-ai agent configure claude
+```
+
+The commands write the service endpoints and an API key to `~/.config/opencode/opencode.jsonc` and `~/.claude/settings.json`. Re-run them to refresh the key.
