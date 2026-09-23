@@ -1,6 +1,6 @@
 # Facility (IRI) API
 
-The ALCF Facility API (also named IRI API) allows you to programatically execute jobs on HPC systems, trigger filesystem operations, and view your current allocations. This demo focuses on the execution of simple jobs to demonstrate the overall capabilities of the V1 version of the API.
+The ALCF Facility API (also named IRI API) allows you to programmatically execute jobs on HPC systems, trigger filesystem operations, and view your current allocations. This demo focuses on the execution of simple jobs to demonstrate the overall capabilities of the V1 version of the API.
 
 For more information:
 - [ALCF documentation](https://docs.alcf.anl.gov/services/iri-api/)
@@ -27,9 +27,12 @@ If you already authenticated with `alcf-tokens` **with your ALCF credentials**, 
 alcf-tokens test-token iri
 ```
 
-If your token if valid and ready to use with the IRI API, you should see:
+If your token is valid and ready to use with the IRI API, you should see:
 ```json
-{"ready": true, "error": null}
+{
+    "ready": true, 
+    "error": null
+}
 ```
 
 If you get an error, please try to re-generate your token:
@@ -53,7 +56,7 @@ You can filter the list by adding the resource name (e.g., polaris) as an argume
 python 01_get_resources.py polaris
 ```
 
-For each resource, `current_status` reports whether the resource is *up* and ready to use, and `id` uniquely identities the resource. To query a specific resource from its ID without going through a list, execute the following:
+For each resource, `current_status` reports whether the resource is *up* and ready to use, and `id` uniquely identifies the resource. To query a specific resource from its ID without going through a list, execute the following:
 
 ```bash
 python 02_get_resource.py 55c1c993-1124-47f9-b823-514ba3849a9a
@@ -61,7 +64,7 @@ python 02_get_resource.py 55c1c993-1124-47f9-b823-514ba3849a9a
 
 ### 2.b. Submit Jobs
 
-Look into `03_submit_job.py` and modify the `STDOUT_PATH` and `STDERR_PATH` paths to include your ALCF name. Then, execute the script to submit a job to Polaris (`RESOURCE_ID=55c1c993-1124-47f9-b823-514ba3849a9a`):
+Look into `03_submit_job.py` and modify the `STDOUT_PATH` and `STDERR_PATH` paths to **include your ALCF username**. Then, execute the script to submit a job to Polaris (`RESOURCE_ID=55c1c993-1124-47f9-b823-514ba3849a9a`):
 ```bash
 python 03_submit_job.py
 ```
@@ -84,7 +87,7 @@ Execute the following to query the state of your job:
 python 04_get_job_state.py <your-job-id>
 ```
 
-Once the your job is `completed` or `failed`, continue to the next section.
+Once your job is `completed` or `failed`, continue to the next section.
 
 ### 2.c. View Job Results
 
@@ -136,7 +139,7 @@ The IRI API allows you to cancel jobs that are already submitted to the PBS sche
 python 03_submit_job.py
 ```
 
-Cancel your job be executing:
+Cancel your job with your job ID by executing:
 ```bash
 python 07_cancel_job.py <your-job-id>
 ```
@@ -160,7 +163,7 @@ python 08_get_projects.py alcf_training
 
 Accounting requests may take some time to execute. If you encounter request timeouts, please try again in a minute.
 
-For each entry, `id` uniquely identities the project. To query a specific project from its ID without going through a list, execute the following:
+For each entry, `id` uniquely identifies the project. To query a specific project from its ID without going through a list, execute the following:
 
 ```bash
 python 09_get_project.py 701d99a6-4102-3e80-bd7c-4872b113795b
