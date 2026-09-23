@@ -6,7 +6,8 @@ TODO: Pass the project ID when calling this script.
 import argparse
 import json
 import requests
-from config import HEADERS
+
+from utils import HEADERS
 
 
 # Query a specific project

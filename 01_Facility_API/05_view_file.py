@@ -6,9 +6,9 @@ TODO: Pass the absolute path of the file when calling this script.
 import argparse
 import json
 import requests
-from config import HEADERS
 from time import sleep
-from utils import get_filesystem_id_from_path
+
+from utils import HEADERS, get_filesystem_id_from_path
 
 
 # Submit filesystem operation and get back a task ID
@@ -18,6 +18,9 @@ def submit_view_file(file_path: str) -> str:
     resource_id = get_filesystem_id_from_path(file_path)
 
     # Submit view command
+    print("\n=========================")
+    print("SUBMIT FILESYSTEM COMMAND")
+    print("=========================\n")
     print(f"Submitting filesystem view command to {resource_id} ...")
     response = requests.get(
         f"https://api.alcf.anl.gov/api/v1/filesystem/view/{resource_id}",
@@ -46,7 +49,11 @@ if __name__ == "__main__":
 
     # Submit filesytem operation and get back a task ID
     task_id = submit_view_file(args.file_path)
-    print(f"\nWaiting for filesystem task {task_id} to complete ...")
+
+    print("\n==============")
+    print("EXTRACT RESULT")
+    print("==============\n")
+    print(f"Waiting for filesystem task {task_id} to complete ...")
 
     while True:
 

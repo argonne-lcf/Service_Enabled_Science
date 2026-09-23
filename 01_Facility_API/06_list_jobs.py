@@ -1,32 +1,33 @@
 """
 Script to list PBS jobs on a compute resource.
-TODO: Adapt query parameteres and filters below.
 """
 
 import json
 import requests
-from config import HEADERS, RESOURCE_ID
 
-# =============================
-# TODO: Define query parameters
-# =============================
+from utils import HEADERS
+
+# Select compute cluster
+#RESOURCE_ID="8b9b42f7-572a-4909-8472-a0453436304c" # Crux
+RESOURCE_ID="55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
+
+# Define query parameters
 params = {
-    "historical": "false", # "true" will include completed jobs
+    "historical": "true", # "true" will include completed jobs
     "limit": 10, # maximum number of jobs returned
     "offset": 0,
 }
 
-# ====================
-# TODO: Define filters
-# ====================
+# Define filters
 filters = {}
 #filters = {"states": ["active"]}
 #filters = {"states": ["active", "queued"]}
 #filters = {"owner": "<your-alcf-username>"}
 #filters = {"jobIds": ["12345", "12346", "12347"]}
 #filters = {"queue": "debug"}
-#filters = {"accountingId": "<your-compute-allocation>"}
+#filters = {"accountingId": "alcf_training"}
 #filters = {"states": ["active"], "queue": "debug"}
+
 
 # Submit request
 response = requests.post(

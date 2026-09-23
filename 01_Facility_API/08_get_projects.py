@@ -6,7 +6,8 @@ Optional argument to extract a project based on its name.
 import argparse
 import json
 import requests
-from config import HEADERS
+
+from utils import HEADERS
 
 
 def get_projects(project_name=None):

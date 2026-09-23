@@ -1,22 +1,33 @@
 """
 Submit a job to a compute resource and get the job ID back.
-TODO: Adapt variables in your .env file.
+TODO: Modify STDOUT_PATH/STDERR_PATH variables below to include your ALCF username.
 """
 
 import json
 import requests
 
-from config import (
-    HEADERS,
-    RESOURCE_ID,
-    COMMANDS,
-    STDOUT_PATH,
-    STDERR_PATH,
-    NODES,
-    WALLTIME_SEC,
-    QUEUE,
-    COMPUTE_ALLOCATION,
-)
+from utils import HEADERS
+
+# Select compute cluster
+#RESOURCE_ID="8b9b42f7-572a-4909-8472-a0453436304c" # Crux
+RESOURCE_ID="55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
+
+# Define job submission parameters
+NODES=1
+WALLTIME_SEC=300
+QUEUE="debug"
+COMPUTE_ALLOCATION="alcf_training"
+STDOUT_PATH="/home/<your-alcf-username>/log_example.out"
+STDERR_PATH="/home/<your-alcf-username>/log_example.err"
+
+# Define commands to be executed
+COMMANDS="""
+echo Start
+sleep 5
+whoami
+hostname
+echo End
+"""
 
 
 # Submit job to compute resource
