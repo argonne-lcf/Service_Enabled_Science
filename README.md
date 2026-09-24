@@ -10,6 +10,13 @@ Demo materials for ALCF Service-Enabled Science Workshop
 ./setup.sh
 ```
 
+Activate your virtual environment:
+```bash
+source .venv/bin/activate
+```
+
+If something goes wrong, please see the "Alternative Environment Setups" section below.
+
 ## ALCF Tokens
 
 To gain access to services covered in this hackathon, we recommend using [alcf-tokens](https://pypi.org/project/alcf-tokens/).  After just one interactive login step, this CLI tool automatically refreshes and retrieves Globus access tokens for the following services:
@@ -20,7 +27,7 @@ To gain access to services covered in this hackathon, we recommend using [alcf-t
 | [ALCF IRI API](https://docs.alcf.anl.gov/services/iri-api/) | `iri` |
 | [Globus Compute](https://www.globus.org/compute) | `globus-compute` |
 | [Globus Transfer](https://www.globus.org/data-transfer) | `globus-transfer` |
-
+| [Globus Flows](https://docs.globus.org/api/flows) | `globus-flows` |
 
 ### Authentication
 
@@ -28,6 +35,18 @@ To properly gain access to all ALCF services, **make sure you authenticate with 
 
 ```bash
 alcf-tokens login --authorize-transfer home --authorize-transfer eagle
+```
+
+The above command will print a URL that you can copy-paste to your browser. Select the Argonne LCF identity provider and enter your ALCF credentials. Copy-paste the authorization code back in your terminal.
+
+Test your token:
+```bash
+alcf-tokens test-token inference
+```
+
+If successful, you should see
+```json
+{"ready": true, "error": null}
 ```
 
 ### Troubleshooting
