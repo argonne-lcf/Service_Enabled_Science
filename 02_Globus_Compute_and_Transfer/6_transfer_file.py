@@ -1,5 +1,4 @@
 import time
-
 from globus_sdk import AccessTokenAuthorizer, TransferClient, TransferData
 from alcf_tokens.auth import get_access_token
 
@@ -13,7 +12,7 @@ from alcf_tokens.auth import get_access_token
 
 # Specify your ALCF USERNAME to find your home directory on the home collection, e.g.:
 # ALCF_USERNAME = "csimpson"
-ALCF_USERNAME = "csimpson"
+ALCF_USERNAME = 
 
 # Globus collection ids.
 SRC_COLLECTION = "05d2c76a-e867-4f67-aa57-76edeb0beda0"  # eagle
