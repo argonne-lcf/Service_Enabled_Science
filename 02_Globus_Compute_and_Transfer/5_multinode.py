@@ -23,7 +23,6 @@ def query_host():
 
 
 serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
-
 user_endpoint_config = {
     "account": ACCOUNT,
     "queue": QUEUE,
@@ -31,7 +30,7 @@ user_endpoint_config = {
     "launcher_type": "MpiExecLauncher",
     # Request a block spanning NUM_NODES nodes
     "nodes_per_block": NUM_NODES,
-    # One worker per node so each function lands on its own node
+    # Pin one worker per GPU, there are 4 GPUs on a Polaris node
     "max_workers_per_node": 4,
     "available_accelerators": 4,
     # place=scatter is important for multi-node jobs: it spreads the job's
@@ -40,6 +39,7 @@ user_endpoint_config = {
         "#PBS -l filesystems=home:eagle:grand\n"
         "#PBS -l place=scatter"
     ),
+    "max_idletime": 60,
 }
 
 authorizer = get_service_authorizer('globus-compute')

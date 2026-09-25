@@ -39,8 +39,7 @@ user_endpoint_config = {
     "available_accelerators": 4,
     # Shut the PBS job down after 60s idle so you don't burn allocation
     "max_idletime": 60,
-    # Polaris-visible filesystems.  NOTE: the MEP runs on Polaris, which
-    # cannot see Aurora's /flare filesystem -- use home/eagle/grand.
+    # Polaris-visible filesystems.
     "scheduler_options": "#PBS -l filesystems=home:eagle:grand",
 }
 

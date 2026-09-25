@@ -10,11 +10,11 @@ from alcf_tokens.auth import get_service_authorizer
 # The Polaris MEP is already running as a facility service -- there is no
 # endpoint for you to configure or start.  You only need its UUID.
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
-CRUX_MEP = "fd8b54bb-9452-411d-8e3a-09408156a886" # You can also try with Crux
+CRUX_MEP = "fd8b54bb-9452-411d-8e3a-09408156a886"
 
 # Project and queue used to charge and schedule the PBS jobs the MEP submits
 # on your behalf.
-ACCOUNT = "datascience"
+ACCOUNT = "alcf_training"
 QUEUE = "debug"
 
 # A simple function that reports the environment it runs in on Polaris.
@@ -76,4 +76,5 @@ print(polaris_future.result())
 print('Crux result:')
 print(crux_future.result())
 
-gce.shutdown()
+polaris_gce.shutdown()
+crux_gce.shutdown()
