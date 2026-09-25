@@ -1,7 +1,6 @@
 import time
-
-from globus_sdk import AccessTokenAuthorizer, TransferClient, TransferData
-from alcf_tokens.auth import get_access_token
+from globus_sdk import TransferClient, TransferData
+from alcf_tokens.auth import get_service_authorizer
 
 # This script transfers a file with Globus without needing your own Globus
 # client ID.  It uses the public native client bundled with alcf_tokens, so
@@ -12,8 +11,8 @@ from alcf_tokens.auth import get_access_token
 # after which the stored tokens are reused (and refreshed) automatically.
 
 # Specify your ALCF USERNAME to find your home directory on the home collection, e.g.:
-# ALCF_USERNAME = "csimpson"
 ALCF_USERNAME = "csimpson"
+#ALCF_USERNAME = 
 
 # Globus collection ids.
 SRC_COLLECTION = "05d2c76a-e867-4f67-aa57-76edeb0beda0"  # eagle
@@ -24,11 +23,8 @@ DST_COLLECTION = "9032dd3a-e841-4687-a163-2720da731b5b"  # home
 SRC_PATH = "/alcf_training/Service_Enabled_Science/test_transfer_file.txt"
 DST_PATH = f"/{ALCF_USERNAME}/test_transfer_file.txt"
 
-# The token for transfers created by alcf-tokens
-TRANSFER_TOKEN = get_access_token("globus-transfer")
-
 def main() -> None:
-    authorizer = AccessTokenAuthorizer(TRANSFER_TOKEN)
+    authorizer = get_service_authorizer('globus-transfer')
     with TransferClient(authorizer=authorizer) as tc:
         transfer_request = TransferData(SRC_COLLECTION, DST_COLLECTION)
         transfer_request.add_item(SRC_PATH, DST_PATH)

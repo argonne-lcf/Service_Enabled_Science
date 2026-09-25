@@ -231,13 +231,12 @@ Each action is a state in the flow definition.  `Next`/`End` wire them in sequen
 
 **Prerequisite:** run `3_register_function.py` first — it writes the `adder` function id to `REGISTERED_FUNC_ID`, which this script reads.
 
-**Authentication and scopes.**  Like the transfer exercises, this reuses the public native client bundled with `alcf_tokens`, so **no user-specified client id is needed**.  There is one subtlety worth understanding: starting the flow needs the flow's own scope, and because the flow drives Transfer on your behalf, that scope needs the Transfer scope as a *dependency* — which in turn needs each mapped collection's `data_access` scope.  The script builds this nested scope explicitly (see `run_flow_scope`), so the first run prompts for the right consents.
-
 ```bash
 python 7_run_flow.py
 ```
 
-The script registers the flow, starts a run, prints a `https://app.globus.org/runs/<run_id>` link you can watch in the web app, and polls until the run reaches `SUCCEEDED` or `FAILED`.  Expect a few minutes: the transfer runs first, then the MEP has to start a PBS job on Polaris for the `adder` step.
+The script registers the flow, prompts the user for flow authentication, starts a run, prints a `https://app.globus.org/runs/<run_id>` link you can watch in the web app, and polls until the run reaches `SUCCEEDED` or `FAILED`.  Expect a few minutes: the transfer runs first, then the MEP has to start a PBS job on Polaris for the `adder` step.
+
 
 # Troubleshooting
 

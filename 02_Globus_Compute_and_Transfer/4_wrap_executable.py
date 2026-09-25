@@ -1,12 +1,10 @@
-from globus_compute_sdk import Executor
+from globus_compute_sdk import Executor, Client
 from globus_compute_sdk.serialize import ComputeSerializer, AllCodeStrategies
+from alcf_tokens.auth import get_service_authorizer
 
-# Run from an Aurora UAN against the Polaris MEP.
-#
-# Globus Compute runs Python functions, but most HPC work is a compiled
-# executable.  The pattern is to WRAP the executable in a Python function that
-# shells out to it with subprocess.  Here the shell command "hostname; sleep"
-# stands in for the path to a real compiled executable.
+# Globus Compute runs Python functions.  Here is an example to WRAP a compiled 
+# executable in a Python function that shells out to it with subprocess.  
+# Here the shell command "hostname; sleep" in for the path to a real compiled executable.
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
@@ -49,9 +47,12 @@ def host_sleep_wrapper(sleeptime):
 if __name__ == "__main__":
     # The wrapper touches the Polaris filesystem, so request Polaris-visible
     # filesystems in the PBS job the MEP submits.
+    authorizer = get_service_authorizer('globus-compute')
+    gcc = Client(authorizer=authorizer)
     serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
     gce = Executor(
         endpoint_id=POLARIS_MEP,
+        client=gcc,
         serializer=serializer,
         user_endpoint_config={
             "account": ACCOUNT,
