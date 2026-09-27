@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["fastmcp>=2.10", "rich"]
+# dependencies = ["fastmcp>=2.10,<5", "rich"]
 # ///
 """
 Step 0: Use an MCP server somebody else runs.

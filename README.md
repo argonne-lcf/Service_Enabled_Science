@@ -10,6 +10,8 @@ Demo materials for ALCF Service-Enabled Science Workshop
 ./setup.sh
 ```
 
+The same `.venv` also runs [Session 05](05_Agentic_Workflows/)'s MCP servers, so `setup.sh` finishes by checking those import cleanly.
+
 Activate your virtual environment:
 ```bash
 source .venv/bin/activate

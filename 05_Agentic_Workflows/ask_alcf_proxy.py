@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["fastmcp>=2.10"]
+# dependencies = ["fastmcp>=2.10,<5"]
 # ///
 """
 A local stdio server that forwards to https://ask.alcf.anl.gov/mcp.
@@ -13,7 +13,7 @@ client that can launch a subprocess.
 
     uv run ask_alcf_proxy.py     # normally launched by your agent, not by hand
 
-opencode (~/.config/opencode/opencode.jsonc):
+Already wired up in opencode.jsonc next to this file:
 
     { "mcp": { "ask-alcf": { "type": "local",
         "command": ["uv", "run", "ask_alcf_proxy.py"], "enabled": true } } }

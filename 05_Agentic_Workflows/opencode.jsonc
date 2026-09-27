@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Project-scoped MCP servers for Session 05. opencode merges this with your
+  // global ~/.config/opencode/opencode.jsonc, so the ALCF Inference provider
+  // that `alcf-ai agent configure opencode` wrote there stays in effect --
+  // this file only adds the "mcp" key.
+  //
+  // Both servers run from the repo virtual environment built by ../setup.sh.
+  // The relative paths resolve against the directory you start opencode in,
+  // so start it from HERE.
+  "mcp": {
+    // Same server Claude Code's .mcp.json reaches over plain HTTPS, but routed
+    // through a local Python forwarder: ask.alcf.anl.gov sits behind
+    // Cloudflare, which 403s opencode by TLS fingerprint. See ask_alcf_proxy.py.
+    "ask-alcf": {
+      "type": "local",
+      "command": ["../.venv/bin/python", "ask_alcf_proxy.py"],
+      "enabled": true,
+      // Default is 5000 ms. The forwarder starts in well under a second, but
+      // its first call still has to reach ask.alcf.anl.gov.
+      "timeout": 30000
+    },
+
+    // Your own server: six IRI calls plus four Globus staging tools, exposed
+    // as agent tools. Needs a valid token -- check with
+    // `alcf-tokens test-token iri`.
+    "alcf-iri": {
+      "type": "local",
+      "command": ["../.venv/bin/python", "alcf_mcp.py"],
+      "enabled": true,
+      "timeout": 30000
+    }
+  }
+}
