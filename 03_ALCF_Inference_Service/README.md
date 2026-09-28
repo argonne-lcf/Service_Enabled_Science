@@ -9,6 +9,23 @@ The ALCF Inference Service exposes industry-standard APIs for interacting with L
 
 Refer to the [ALCF Inference Service User Guide](https://docs.alcf.anl.gov/services/inference-endpoints/) for additional details on the available clusters, hosted models, and capabilities.  The LLM APIs provide broad interoperability with existing libraries, frameworks, and agentic applications.  Scientific workflows leveraging other AI providers, such as the Genesis Mission Model Access Gateway (MAG), can be readily configured to use the Inference Service as another source of tokens.
 
+## Authentication
+
+Check your inference access token validity:
+
+```bash
+$ alcf-tokens test-token inference
+{"ready": true, "error": null}
+```
+
+If it's expired or invalid, use `alcf-tokens login` to authenticate with your ALCF credentials.
+
+(**Note:** the inference service is open to all DOE lab users and accepts Globus login with other identity providers.  Use
+`alcf-tokens login inference` to sign into the inference service only with a different identity provider.  For the purposes
+of this session, we recommend the default `alcf-tokens login` command, which enforces the use of the ALCF identity provider
+to ensure access to all other facility services.) 
+
+
 ## REST API
 You can also interact with the ALCF Inference APIs directly using the HTTPS client of your choice.  `curl` often provides a quick, transparent way to test the system:
 
@@ -35,14 +52,6 @@ the one illustrated above) to the inference API on your behalf.
 [`alcf-ai`](https://pypi.org/project/alcf-ai/) provides a command-line interface for
 convenient shell-based interaction with the inference APIs.
 
-Check your inference access token validity:
-
-```bash
-$ alcf-tokens test-token inference
-{"ready": true, "error": null}
-```
-
-If it's expired or invalid, use `alcf-tokens login` to authenticate with your ALCF credentials.
 
 ### CLI: Discover running models
 
