@@ -1,0 +1,365 @@
+%% beamerthemesesalcf.sty -- SES-ALCF beamer theme.
+%% Reproduces SES-ALCF-Template_MASTER.pptx (Argonne Leadership Computing
+%% Facility / Service-Enabled Science).
+%%
+%%   \usetheme{sesalcf}                 dark family
+%%   \usetheme[sectionpages]{sesalcf}    + a section page per \section
+%%
+%% Two slide families, as in the pptx:
+%%   dark  navy background, white text       \begin{frame}{...}
+%%   light white background, black title     \begin{seslightframe}\frametitle{...}
+%% Switch a whole document with \sesalcfdark (default) / \sesalcflight.
+%%
+%% Sizes are the pptx's, scaled by 16cm/13.33in = 0.4724 (36pt title -> 17pt).
+%% Media in \sesalcfassetpath, default sesalcf-assets/.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{beamerthemesesalcf}[2026/09/23 v1.2 SES-ALCF beamer theme]
+
+\RequirePackage{tikz}
+\RequirePackage{graphicx}
+\RequirePackage[table]{xcolor}
+
+%% Arial under XeLaTeX/LuaLaTeX, Nimbus Sans otherwise; Menlo for mono.
+\RequirePackage{iftex}
+\ifPDFTeX
+  \RequirePackage[scaled=0.85]{helvet}
+  \RequirePackage[scaled=0.82]{beramono}
+\else
+  \RequirePackage{fontspec}
+  \IfFontExistsTF{Arial}{\setsansfont{Arial}\setmainfont{Arial}}{}
+  \IfFontExistsTF{Menlo}{\setmonofont{Menlo}}{%
+    \IfFontExistsTF{DejaVu Sans Mono}{\setmonofont{DejaVu Sans Mono}}{}}
+\fi
+\renewcommand{\familydefault}{\sfdefault}
+
+% --- options ---------------------------------------------------------------
+\newif\ifsesalcf@sectionpages
+\DeclareOption{sectionpages}{\sesalcf@sectionpagestrue}
+\DeclareOption*{\PackageWarning{beamerthemesesalcf}{Unknown option '\CurrentOption'}}
+\ProcessOptions\relax
+
+\newcommand*{\sesalcfassetpath}{sesalcf-assets/}
+\newif\ifsesalcf@light
+
+%% Geometry, from the pptx master and layouts (inches x 1.2 = cm).
+\newlength{\sesalcf@bar}      \setlength{\sesalcf@bar}{0.40cm}
+\newlength{\sesalcf@barin}    \setlength{\sesalcf@barin}{0.01cm}
+\newlength{\sesalcf@margin}   \setlength{\sesalcf@margin}{0.73cm}
+\newlength{\sesalcf@titleht}  \setlength{\sesalcf@titleht}{2.15cm}
+\newlength{\sesalcf@bandht}   \setlength{\sesalcf@bandht}{0.127\paperheight}
+
+\newcommand*{\sesalcf@logo}[4]{%
+  \node[inner sep=0pt, anchor=south west]
+    at ([xshift=#2,yshift=#3]current page.south west)
+    {\includegraphics[height=#4]{\sesalcfassetpath #1}};}
+
+% --- palette (pptx theme1.xml) ---------------------------------------------
+\definecolor{SESnavy}{HTML}{1D1651}         % accent1
+\definecolor{SESteal}{HTML}{0061AF}         % accent2
+\definecolor{SESgrey}{HTML}{6E6E78}         % dk2
+\definecolor{SESbluetint}{HTML}{79C3FF}     % accent2 lumMod40 lumOff60
+\definecolor{SESpanel}{HTML}{26224A}         % code panels on navy
+\definecolor{SESink}{HTML}{000000}          % tx1, text on the light family
+\definecolor{SESpanelLight}{HTML}{D9D9D9}   % bg1 lumMod85
+\definecolor{SESlight}{HTML}{E7E6E6}        % lt2
+
+% --- colours --------------------------------------------------------------
+\newcommand*{\sesalcf@darkcolors}{%
+  \sesalcf@lightfalse
+  \@ifundefined{arrayrulecolor}{}{\arrayrulecolor{white}}%
+  \setbeamercolor{background canvas}{bg=SESnavy}%
+  \setbeamercolor{normal text}{fg=white, bg=SESnavy}%
+  \setbeamercolor{structure}{fg=SESteal}%
+  \setbeamercolor{alerted text}{fg=SESbluetint}%
+  \setbeamercolor{frametitle}{fg=white}%
+  \setbeamercolor{framesubtitle}{fg=SESbluetint}%
+  \setbeamercolor{title}{fg=white}%
+  \setbeamercolor{subtitle}{fg=SESbluetint}%
+  \setbeamercolor{author}{fg=white}%
+  \setbeamercolor{date}{fg=SESlight}%
+  \setbeamercolor{section title}{fg=white}%
+  \setbeamercolor{itemize item}{fg=white}%
+  \setbeamercolor{itemize subitem}{fg=white}%
+  \setbeamercolor{itemize subsubitem}{fg=white}%
+  \setbeamercolor{enumerate item}{fg=white}%
+  \setbeamercolor{enumerate subitem}{fg=white}%
+  \setbeamercolor{block title}{fg=white, bg=SESteal}%
+  \setbeamercolor{block body}{fg=white, bg=SESpanel}%
+  \setbeamercolor{footnote}{fg=SESlight}%
+  \setbeamercolor{footnote mark}{fg=SESbluetint}%
+  \setbeamercolor{quotation}{fg=SESlight}%
+  \setbeamercolor{page number in head/foot}{fg=white}%
+}
+
+\newcommand*{\sesalcf@lightcolors}{%
+  \sesalcf@lighttrue
+  \@ifundefined{arrayrulecolor}{}{\arrayrulecolor{SESink}}%
+  \setbeamercolor{background canvas}{bg=white}%
+  \setbeamercolor{normal text}{fg=SESink, bg=white}%
+  \setbeamercolor{structure}{fg=SESteal}%
+  \setbeamercolor{alerted text}{fg=SESteal}%
+  \setbeamercolor{frametitle}{fg=SESink}%
+  \setbeamercolor{framesubtitle}{fg=SESteal}%
+  \setbeamercolor{itemize item}{fg=SESink}%
+  \setbeamercolor{itemize subitem}{fg=SESink}%
+  \setbeamercolor{itemize subsubitem}{fg=SESink}%
+  \setbeamercolor{enumerate item}{fg=SESink}%
+  \setbeamercolor{enumerate subitem}{fg=SESink}%
+  \setbeamercolor{block title}{fg=white, bg=SESgrey}%
+  \setbeamercolor{block body}{fg=SESink, bg=SESpanelLight}%
+  \setbeamercolor{footnote}{fg=SESink}%
+  \setbeamercolor{footnote mark}{fg=SESteal}%
+  \setbeamercolor{quotation}{fg=SESgrey}%
+  \setbeamercolor{page number in head/foot}{fg=SESink}%
+}
+\newcommand*{\sesalcfdark}{\sesalcf@darkcolors}
+\newcommand*{\sesalcflight}{\sesalcf@lightcolors}
+\sesalcf@darkcolors
+
+% --- type sizes (pptx pt x 0.4724) ---------------------------------------
+\setbeamerfont{normal text}{size=\fontsize{9.4}{11.3}}
+\setbeamerfont{title}{size=\fontsize{18}{21}, series=\bfseries}
+\setbeamerfont{subtitle}{size=\fontsize{11}{13}}
+\setbeamerfont{author}{size=\fontsize{9}{11}}
+\setbeamerfont{date}{size=\fontsize{9}{11}}
+\setbeamerfont{frametitle}{size=\fontsize{17}{19}, series=\bfseries}
+\setbeamerfont{framesubtitle}{size=\fontsize{12.6}{14.5}, series=\bfseries}
+\setbeamerfont{section title}{size=\fontsize{19}{23}, series=\bfseries}
+\setbeamerfont{itemize/enumerate body}{size=\fontsize{9.4}{11.3}}
+\setbeamerfont{itemize/enumerate subbody}{size=\fontsize{9}{11}}
+\setbeamerfont{itemize/enumerate subsubbody}{size=\fontsize{8.6}{10.5}}
+\setbeamerfont{block title}{size=\fontsize{9.6}{11.5}, series=\bfseries}
+\setbeamerfont{block body}{size=\fontsize{9.2}{11}}
+\setbeamerfont{footnote}{size=\fontsize{7.6}{9}}
+\setbeamerfont{quotation}{size=\fontsize{9.4}{11.3}, shape=\itshape}
+\setbeamerfont{page number in head/foot}{size=\fontsize{8}{9}}
+
+% --- background: master sidebar, full height ---------------------------------
+\setbeamertemplate{background}{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[SESteal] (current page.north west) rectangle ++(\sesalcf@bar,-\paperheight);
+  \end{tikzpicture}%
+}
+
+% --- bullets (master bodyStyle: text colour, not an accent) -------------------
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize item}{%
+  {\usebeamercolor[fg]{itemize item}\raise0.25ex\hbox{\scriptsize\textbullet}}}
+\setbeamertemplate{itemize subitem}{%
+  {\usebeamercolor[fg]{itemize subitem}\raise0.10ex\hbox{\textemdash}}}
+\setbeamertemplate{itemize subsubitem}{%
+  {\usebeamercolor[fg]{itemize subsubitem}\raise0.05ex\hbox{\textperiodcentered}}}
+\setbeamertemplate{enumerate item}{%
+  \usebeamercolor[fg]{enumerate item}\insertenumlabel.}
+\setbeamertemplate{enumerate subitem}{%
+  \usebeamercolor[fg]{enumerate subitem}\insertenumlabel.}
+
+% --- title page (pptx layout 1) --------------------------------------------
+\setbeamertemplate{title page}{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[inner sep=0pt, anchor=south west] at (current page.south west)
+      {\includegraphics[width=\paperwidth,height=\paperheight]{\sesalcfassetpath bg-title.png}};
+    \fill[SESteal] ([yshift=-1.46cm]current page.north west) rectangle ++(\sesalcf@bar,-6.64cm);
+    %% offsets differ by height so the three marks line up on their centres
+    \sesalcf@logo{logo-doe-dark.png}{0.82cm}{0.28cm}{0.49cm}
+    \sesalcf@logo{logo-anl-mark.png}{5.52cm}{0.04cm}{0.86cm}
+    \sesalcf@logo{logo-doe.png}{10.07cm}{0.17cm}{0.70cm}
+  \end{tikzpicture}%
+  \begin{minipage}[t][\paperheight][t]{\paperwidth}%
+    \vspace*{2.60cm}%
+    \hspace*{0.79cm}%
+    \begin{minipage}[t]{11.2cm}%
+      \usebeamerfont{title}\usebeamercolor[fg]{title}\inserttitle\par
+      \ifx\insertsubtitle\@empty\else
+        \vspace{0.35cm}%
+        {\usebeamerfont{subtitle}\usebeamercolor[fg]{subtitle}\insertsubtitle\par}%
+      \fi
+    \end{minipage}%
+    \vfill
+    \hspace*{0.79cm}%
+    \begin{minipage}[b]{7cm}%
+      {\usebeamerfont{author}\usebeamercolor[fg]{author}\insertauthor\par}%
+      \vspace{0.18cm}%
+      {\usebeamerfont{date}\usebeamercolor[fg]{date}\insertdate\par}%
+    \end{minipage}%
+    \vspace*{2.90cm}%
+  \end{minipage}%
+}
+
+% --- section page (pptx layout 2) ------------------------------------------
+%% The picture stops short of the bottom, so the master's white background shows
+%% as a band holding the dark logos.
+\setbeamertemplate{section page}{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[white] ([xshift=\dimexpr\sesalcf@bar-\sesalcf@barin\relax]current page.south west)
+      rectangle ++(\dimexpr\paperwidth-\sesalcf@bar+\sesalcf@barin\relax,\sesalcf@bandht);
+    \node[inner sep=0pt, anchor=north west]
+      at ([xshift=\dimexpr\sesalcf@bar-\sesalcf@barin\relax]current page.north west)
+      {\includegraphics[width=\dimexpr\paperwidth-\sesalcf@bar+\sesalcf@barin\relax,
+                        height=0.873\paperheight]{\sesalcfassetpath bg-section.png}};
+    \sesalcf@logo{logo-doe-dark.png}{0.82cm}{0.28cm}{0.49cm}
+    \sesalcf@logo{logo-alcf-dark.png}{10.02cm}{0.01cm}{1.12cm}
+  \end{tikzpicture}%
+  \begin{minipage}[c][0.873\paperheight][c]{\paperwidth}%
+    \hspace*{0.79cm}%
+    \begin{minipage}{11.6cm}%
+      \usebeamerfont{section title}\usebeamercolor[fg]{section title}\insertsectionhead\par
+    \end{minipage}%
+  \end{minipage}%
+}
+
+\ifsesalcf@sectionpages
+  \AtBeginSection[]{%
+    \begin{frame}[plain,noframenumbering]\sectionpage\end{frame}%
+  }
+\fi
+
+% --- frame title and footline ----------------------------------------------
+\setbeamersize{text margin left=\sesalcf@margin, text margin right=\sesalcf@margin}
+
+\setbeamertemplate{frametitle}{%
+  \vbox to \sesalcf@titleht{%
+    \vspace*{0.34cm}%
+    \begin{minipage}[t]{14.5cm}%
+      \usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle\par
+      \ifx\insertframesubtitle\@empty\else
+        \vspace{0.10cm}%
+        {\usebeamerfont{framesubtitle}\usebeamercolor[fg]{framesubtitle}\insertframesubtitle\par}%
+      \fi
+    \end{minipage}%
+    \vfill
+  }%
+}
+
+%% pptx layout 5: DOE mark bottom left, ALCF mark bottom right, number centred
+\setbeamertemplate{footline}{%
+  \hbox to\paperwidth{%
+    \hspace*{0.82cm}%
+    \ifsesalcf@light
+      \includegraphics[height=0.32cm]{\sesalcfassetpath logo-doe-dark.png}%
+    \else
+      \includegraphics[height=0.32cm]{\sesalcfassetpath logo-doe.png}%
+    \fi
+    \hfill
+    {\usebeamerfont{page number in head/foot}%
+     \usebeamercolor[fg]{page number in head/foot}\insertframenumber}%
+    \hfill
+    \ifsesalcf@light
+      \includegraphics[height=0.54cm]{\sesalcfassetpath logo-alcf-dark.png}%
+    \else
+      \includegraphics[height=0.54cm]{\sesalcfassetpath logo-anl-mark.png}%
+    \fi
+    \hspace*{0.82cm}}%
+  \vskip0.50cm
+}
+
+% --- layout library (pptx layouts the decks do not use) ----------------------
+%% *Title and Subtitle Only             a frame with no body
+%% *Title and Subtitle: 2..5 column      \begin{sescolumns}{n}\sescolumn{head}{body}
+%% *Title and Subtitle: 4 block big idea  \sespanel{head}{body}, two per row
+%% *Title and Subtitle: 3 column photo    \begin{sesphotos}{n}\sesphoto{file}{caption}
+%% Custom Layout                        \sesfullbleed[Title]{file}
+\newcount\sesalcf@colcount
+\newcount\sesalcf@colused
+\newlength{\sesalcf@colwidth}
+\newlength{\sesalcf@coltmp}
+\newlength{\sesalcf@panelwidth}
+
+%% n equal cells across the text block, 0.30cm apart
+\newcommand{\sesalcf@colsetup}[1]{%
+  \sesalcf@colcount=#1\relax
+  \sesalcf@colused=0\relax
+  \setlength{\sesalcf@colwidth}{\textwidth}%
+  \divide\sesalcf@colwidth by \sesalcf@colcount
+  \addtolength{\sesalcf@colwidth}{-0.30cm}%
+  \setlength{\sesalcf@coltmp}{0.30cm}%
+  \divide\sesalcf@coltmp by \sesalcf@colcount
+  \addtolength{\sesalcf@colwidth}{\sesalcf@coltmp}%
+}
+\newcommand{\sesalcf@colnext}{%
+  \advance\sesalcf@colused by 1\relax
+  \ifnum\sesalcf@colused<\sesalcf@colcount\relax\hfill\fi
+}
+
+\newenvironment{seslightframe}{%
+  \sesalcf@lightcolors
+  \begin{frame}%
+}{%
+  \end{frame}%
+}
+
+\setbeamercolor{ses column head}{fg=white, bg=SESgrey}
+\setbeamercolor{ses column body}{fg=SESink, bg=SESpanelLight}
+\setbeamercolor{ses panel body}{fg=white, bg=SESgrey}
+\setbeamercolor{ses photo caption}{fg=SESink}
+\setbeamerfont{ses column head}{size=\fontsize{11.3}{13}, series=\bfseries}
+\setbeamerfont{ses column body}{size=\fontsize{10}{12}}
+\setbeamerfont{ses panel head}{size=\fontsize{15}{17}, series=\bfseries}
+\setbeamerfont{ses panel body}{size=\fontsize{10}{12}}
+\setbeamerfont{ses photo caption}{size=\fontsize{8.8}{10.5}}
+
+\newenvironment{sescolumns}[1]{%
+  \sesalcf@colsetup{#1}\par\noindent\ignorespaces
+}{%
+  \par
+}
+\newcommand{\sescolumn}[2]{%
+  \begin{minipage}[t]{\sesalcf@colwidth}%
+    \begin{beamercolorbox}[wd=\sesalcf@colwidth,sep=0.16cm]{ses column head}%
+      \usebeamerfont{ses column head}#1%
+    \end{beamercolorbox}%
+    \vspace{0.06cm}%
+    \begin{beamercolorbox}[wd=\sesalcf@colwidth,sep=0.16cm]{ses column body}%
+      \usebeamerfont{ses column body}#2%
+    \end{beamercolorbox}%
+  \end{minipage}%
+  \sesalcf@colnext
+}
+
+\newcommand{\sespanel}[2]{%
+  \setlength{\sesalcf@panelwidth}{\textwidth}%
+  \divide\sesalcf@panelwidth by 2%
+  \addtolength{\sesalcf@panelwidth}{-0.15cm}%
+  \begin{minipage}[t]{\sesalcf@panelwidth}%
+    \begin{beamercolorbox}[wd=\linewidth,sep=0.22cm]{ses panel body}%
+      \usebeamerfont{ses panel head}#1\par
+      \vspace{0.10cm}%
+      \usebeamerfont{ses panel body}#2%
+    \end{beamercolorbox}%
+  \end{minipage}%
+}
+
+\newenvironment{sesphotos}[1]{%
+  \sesalcf@colsetup{#1}\par\noindent\ignorespaces
+}{%
+  \par
+}
+\newcommand{\sesphoto}[2]{%
+  \begin{minipage}[t]{\sesalcf@colwidth}%
+    \includegraphics[width=\sesalcf@colwidth,height=3.4cm,keepaspectratio]{#1}\par
+    \vspace{0.12cm}%
+    {\usebeamercolor[fg]{ses photo caption}\usebeamerfont{ses photo caption}%
+     \leavevmode\raise0.25ex\hbox{\scriptsize\textbullet}\hspace{0.4em}#2\par}%
+  \end{minipage}%
+  \sesalcf@colnext
+}
+
+%% \begin{frame}[plain]\sesfullbleed[Title]{file}\end{frame}
+\newcommand{\sesfullbleed}[2][]{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[inner sep=0pt, anchor=south west] at (current page.south west)
+      {\includegraphics[width=\paperwidth,height=\paperheight]{#2}};
+    \ifx\relax#1\relax\else
+      \node[anchor=north west, inner sep=0pt, text width=14cm, align=left]
+        at ([xshift=\sesalcf@margin,yshift=-0.34cm]current page.north west)
+        {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}#1};
+    \fi
+  \end{tikzpicture}%
+}
+
+\AtBeginDocument{%
+  \hypersetup{colorlinks=true, urlcolor=SESbluetint, linkcolor=SESbluetint,
+              citecolor=SESbluetint}%
+}
+\setbeamertemplate{headline}{}
+\endinput

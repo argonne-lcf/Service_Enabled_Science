@@ -1,0 +1,467 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+
+\usepackage[american]{babel}
+
+\usetheme[sectionpages]{sesalcf}
+\sesalcflight                % white content slides; \sesalcfdark for the navy family
+\usepackage{appendixnumberbeamer}
+\usepackage{ulem}
+\usepackage[newfloat]{minted}
+\usepackage{booktabs}
+\usepackage{csquotes}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+
+\setminted[bash]{xleftmargin=\parindent,fontsize=\scriptsize,baselinestretch=1,breaklines}
+\setminted[text]{xleftmargin=\parindent,fontsize=\scriptsize,baselinestretch=1,breaklines}
+\setminted[c++]{xleftmargin=\parindent,fontsize=\scriptsize,baselinestretch=1, breaklines}
+\setminted[c]{xleftmargin=\parindent,fontsize=\scriptsize,baselinestretch=1, breaklines}
+\setminted[python]{xleftmargin=\parindent,fontsize=\scriptsize,baselinestretch=1, breaklines}
+\setminted[json]{xleftmargin=\parindent,fontsize=\scriptsize,baselinestretch=1,breaklines}
+\setminted[toml]{xleftmargin=\parindent,fontsize=\scriptsize,baselinestretch=1,breaklines}
+\setminted{bgcolor=SESpanelLight}
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\title{Vibecoding With ALCF Inference}
+\subtitle{Agentic coding workflows with open models on ALCF hardware}
+
+\date{\today}
+\author{Ethan Wong}
+
+% the theme supplies the palette, backgrounds, logos and title/section pages
+
+\begin{document}
+
+\begin{frame}[plain]
+\maketitle
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{What is Vibecoding?}
+  \begin{itemize}
+    \item Term coined by Andrej Karpathy (Feb 2025):
+    \begin{quote}\small\itshape
+      \enquote{There's a new kind of coding I call \enquote*{vibe coding}, where you fully \\
+      give in to the vibes, embrace exponentials and forget that the code even exists.}
+    \end{quote}
+    \item \textbf{Working definition:} you describe what you want in plain
+      language, and a \emph{coding agent} writes, runs, and debugs the code.
+      You steer by reviewing the results instead of typing every line.
+    \item You still do the hard part: deciding \emph{what} to build and
+      judging whether it is \emph{correct}.
+    \item For domain scientists: the barrier shifts from syntax to
+      specification and verification, skills you already have.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{From Chatbots to Coding Agents}
+  \begin{itemize}
+    \item \textbf{2021--22:} IDE autocomplete brings Copilot
+      suggestions into your editor, still line-by-line
+    \item \textbf{2022:} chat assistants. You copy/paste snippets from
+      the chat window, run everything, and fix every error
+    \item \textbf{2024--25:} terminal \emph{agents} that read/write files,
+      run shell commands, search the repo, observe errors, and self-correct
+  \end{itemize}
+  \vspace{0.5em}
+  \centering
+  \begin{tikzpicture}[node distance=0.75cm,
+      every node/.style={font=\scriptsize, text=SESink},
+      flowbox/.style={draw=SESteal, fill=SESpanelLight, rounded corners, inner sep=4pt}]
+    \node[flowbox] (prompt) {prompt / intent};
+    \node[flowbox, right=of prompt] (plan) {plan};
+    \node[flowbox, right=of plan] (act) {act (tools)};
+    \node[flowbox, right=of act] (observe) {observe};
+    \node[flowbox, right=of observe] (done) {done};
+    \draw[-stealth, draw=SESteal] (prompt) -- (plan);
+    \draw[-stealth, draw=SESteal] (plan) -- (act);
+    \draw[-stealth, draw=SESteal] (act) -- (observe);
+    \draw[-stealth, draw=SESteal] (observe) -- (done);
+    \draw[-stealth, draw=SESteal] (observe) to[bend right=45]
+      node[below, font=\scriptsize, text=SESgrey] {errors? refine and retry} (plan);
+  \end{tikzpicture}\par
+  \vspace{0.5em}
+  \raggedright
+  The agent is now the \emph{executor}. You become the architect and
+  reviewer, like advising a tireless student.
+\end{frame}
+
+\section{The ALCF Inference Service}
+
+\begin{frame}{ALCF Inference Endpoints at a Glance}
+  \begin{itemize}
+    \item \textbf{30+ open-weight models} on ALCF hardware,
+      behind one OpenAI-compatible API
+    \item Authenticate with your \textbf{ANL/ALCF credentials} via Globus
+    \item Web UI: \url{https://inference.alcf.anl.gov}, or hit the API
+      directly
+    \item Billions of LLM tokens already served
+  \end{itemize}
+  \vspace{0.5em}
+  \begin{table}
+    \centering\footnotesize
+    \begin{tabular}{@{}lll>{\raggedright\arraybackslash}p{4.1cm}@{}}
+      \toprule
+      Cluster & Hardware & Base path & Wire APIs \\
+      \midrule
+      Sophia & NVIDIA A100 & \texttt{/resource\_server/sophia/vllm/v1} & chat, responses\footnotemark, messages\footnotemark[1], completions, embeddings \\
+      Metis & SambaNova SN40L & \texttt{/resource\_server/metis/api/v1} & chat, responses\footnotemark[1] \\
+      Minerva & NVIDIA B200 & \texttt{/resource\_server/minerva/api/v1} & chat, responses, messages, completions, embeddings \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \footnotetext{Streaming for these APIs is disabled on Sophia and
+    Metis; use Chat Completions or Minerva.}
+\end{frame}
+
+
+\section{Setting Up Your Harness}
+
+\begin{frame}{Anatomy of a Coding Agent}
+  \begin{itemize}
+    \item A \textbf{harness} is the terminal-native app wrapping the model
+      with a tool belt, a loop, and guardrails:
+    \begin{itemize}
+      \item \textbf{Tools:} read/edit/write files, run shell commands, search
+        the codebase, (sometimes) the web
+      \item \textbf{Loop:} model proposes action $\rightarrow$ tool executes
+        $\rightarrow$ output observed $\rightarrow$ repeat until done
+      \item \textbf{Guardrails:} approval prompts, sandboxing, git
+    \end{itemize}
+    \item Popular harnesses. All support \emph{external providers}, so
+      they can point at ALCF Inference:
+    \begin{itemize}
+      \item \textbf{OpenCode} (open source, today's default) and
+        \textbf{Pi}, recommended in the ALCF docs
+      \item \textbf{Claude Code}, featured in the session right after
+        this one
+      \item \textbf{OpenAI Codex}, and community shims/proxies for anything
+        else (\texttt{alcf-proxy}, \texttt{llm-rosetta})
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Picking a Model for Agents}
+  \begin{itemize}
+    \item Agents \emph{talk} to models through \textbf{tool calling}: the
+      harness advertises tools (read file, run command, \dots), the model
+      replies with structured calls
+    \item Capability flags in the docs: \textbf{B}atch, \textbf{R}easoning,
+      \textbf{T}ool calling, always \textbf{H}ot
+    \item Agents need models with \textbf{T}; \textbf{R} improves planning;
+      \textbf{H} avoids cold starts
+  \end{itemize}
+  \vspace{0.5em}
+  \begin{table}
+    \centering\footnotesize
+    \begin{tabular}{@{}llll@{}}
+      \toprule
+      Model & Cluster & Flags & Why \\
+      \midrule
+      \texttt{openai/gpt-oss-120b} & Sophia & BRTH & solid default, strong tool use \\
+      \texttt{openai/gpt-oss-20b} & Sophia & BRTH & faster, lighter tasks \\
+      \texttt{google/gemma-4-31B-it} & Sophia & RTH & strong reasoning \\
+      \texttt{meta-llama/Llama-4-Scout-17B-16E-Instruct} & Sophia & BT & long context \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \vspace{0.5em}
+  \footnotesize Full model list: \texttt{uvx alcf-ai ls-endpoints}. On Sophia,
+  non-hot models may take 10--15 min to cold-start; check the Web UI or
+  the \texttt{/jobs} endpoint.
+\end{frame}
+
+\begin{frame}[fragile]{Install the Agent}
+  \begin{itemize}
+    \item One-liners install to \texttt{\textasciitilde/.local/bin};
+      reload your shell afterwards
+  \end{itemize}
+  \begin{minted}[fontsize=\footnotesize]{bash}
+# OpenCode (today's default)
+curl -fsSL https://opencode.ai/install | bash
+
+# Claude Code (next session!)
+curl -fsSL https://claude.ai/install.sh | bash
+
+# reload your shell afterwards (zsh: ~/.zshrc; or open a new terminal)
+source ~/.bashrc
+  \end{minted}
+  \begin{itemize}
+    \item Also available via \texttt{brew}, \texttt{apt}, etc.
+    \item Same ideas apply to Pi, Codex, and friends; see the
+      \texttt{\#agents} section of the ALCF Inference docs
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{One-Command Configuration: \texttt{alcf-ai}}
+  \begin{itemize}
+    \item \texttt{alcf-ai} logs you in, fetches your token, and writes the
+      provider config into your agent's settings
+  \end{itemize}
+  \begin{minted}[fontsize=\footnotesize]{bash}
+# install uv if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# authenticate + configure (interactive Globus login on first use)
+uvx alcf-ai agent configure opencode
+  \end{minted}
+  \begin{itemize}
+    \item Supports \texttt{opencode}, \texttt{pi}, \texttt{codex},
+      \texttt{claude}
+    \item \textbf{Idempotent:} re-run it any time to embed a fresh token
+    \item Need the raw token for a script? \\
+      \texttt{export ALCF\_AI\_TOKEN="\$(uvx alcf-ai auth get-access-token)"}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{What Just Got Configured?}
+  \begin{itemize}
+    \item OpenCode now knows about an ALCF provider
+      (\texttt{\textasciitilde/.config/opencode/opencode.jsonc}):
+  \end{itemize}
+  \begin{minted}[fontsize=\tiny]{json}
+{
+  "provider": {
+    "alcf-inference-service-sophia": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://inference-api.alcf.anl.gov/resource_server/sophia/vllm/v1",
+        "apiKey": "{env:ALCF_AI_TOKEN}"
+      },
+      "models": {
+        "openai/gpt-oss-120b": { "name": "openai/gpt-oss-120b" }
+      }
+    }
+  }
+}
+  \end{minted}
+  \begin{itemize}
+    \item Claude Code is similar: \texttt{ANTHROPIC\_BASE\_URL} +
+      \texttt{ANTHROPIC\_AUTH\_TOKEN} in
+      \texttt{\textasciitilde/.claude/settings.json} (Minerva); full
+      snippet in the \texttt{\#agents} docs
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Your First Session}
+  \begin{itemize}
+    \item Run \texttt{opencode} inside your project; \texttt{/init} writes
+      an \texttt{AGENTS.md} that it reuses on later turns
+    \item The prompt box shows the active agent and model;
+      \texttt{ctrl+p} lists every command
+  \end{itemize}
+  \vspace{0.4em}
+  \centering
+  \includegraphics[width=0.80\textwidth]{opencode-shots/crop-a.png}
+\end{frame}
+
+\begin{frame}{Watching the Agent Work}
+  \begin{itemize}
+    \item Your prompt, the model's reasoning, and every \textbf{tool call}
+      land in one transcript
+    \item Here \texttt{Glob} found the file and \texttt{Read} opened it, so
+      you can audit exactly what it saw
+  \end{itemize}
+  \vspace{0.4em}
+  \centering
+  \includegraphics[width=0.85\textwidth]{opencode-shots/crop-b.png}
+\end{frame}
+
+\begin{frame}{Plan First, Then Build: \texttt{Tab}}
+  \begin{itemize}
+    \item \texttt{Tab} switches between the \textbf{Build} and \textbf{Plan}
+      agents; the prompt box shows which is active
+    \item \textbf{Plan} cannot edit files: it only reads and proposes, so a
+      bad plan costs nothing
+  \end{itemize}
+  \vspace{0.4em}
+  \centering
+  \includegraphics[width=0.85\textwidth]{opencode-shots/crop-c.png}
+\end{frame}
+
+\begin{frame}{Review the Diff}
+  \begin{itemize}
+    \item Every edit arrives as a \textbf{diff} with line numbers: red is
+      removed, green is added
+    \item Review the diff, not the summary. One increment per prompt, then
+      run the code
+  \end{itemize}
+  \vspace{0.4em}
+  \centering
+  \includegraphics[width=0.85\textwidth]{opencode-shots/crop-d.png}
+\end{frame}
+
+\begin{frame}{Undo and Restore}
+  \begin{itemize}
+    \item \texttt{/undo} reverts the last change and hands your original
+      prompt back so you can sharpen it
+    \item \texttt{/redo} (or \texttt{ctrl+x r}) puts it back; git stays your
+      real undo button
+  \end{itemize}
+  \vspace{0.4em}
+  \centering
+  \includegraphics[width=0.85\textwidth]{opencode-shots/crop-e.png}
+\end{frame}
+
+
+\section{Vibecoding Effectively}
+
+\begin{frame}{Trick 1: Vibe in Small Loops}
+  \begin{itemize}
+    \item \textbf{Plan before you build:} ask the agent to read the code and
+      propose a plan first; review it, then let it code
+    \item \textbf{One feature per prompt:} small steps, run the code after
+      every change, commit after every success
+    \item \textbf{Don't fight a confused agent:} if it spirals, restate the
+      goal with clearer context, or start a fresh session instead
+      of piling on corrections
+    \item Git is your undo button; a clean history of small commits makes
+      every agent edit cheap to review or revert
+  \end{itemize}
+  \vspace{0.8em}
+  \centering
+  \textit{Manage the agent like a talented student: small, well-specified
+  tasks beat vague epics.}
+\end{frame}
+
+\begin{frame}{Trick 2: Ground the Agent (Context is Everything)}
+  \begin{itemize}
+    \item Keep an \textbf{instructions file} (\texttt{AGENTS.md},
+      \texttt{CLAUDE.md}, \dots) at the repo root:
+      project purpose, build/run/test commands, conventions, and
+      no-go zones (\enquote*{never touch \texttt{src/legacy}})
+    \item \textbf{Point, don't paste:} tell the agent which files matter
+      and let it read/search the rest; pasted code goes stale
+    \item \textbf{Fresh session per task:} long transcripts rot the
+      model's working memory (the context window) and the agent's judgment
+    \item Encode your \textbf{domain knowledge} explicitly: units, file
+      formats, expected values, edge cases. The model cannot guess
+      your physics.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Trick 3: Make Success Verifiable}
+  \begin{itemize}
+    \item Agents shine when \emph{correctness is checkable}: tests,
+      linters, type checkers, a run script that prints a known result
+    \item \textbf{Failing-test-first:} \enquote{write a test that captures
+      the requirement, then make it pass}. Great for scientific code
+    \item Paste error messages back \emph{verbatim}; the agent reads its
+      own tracebacks far better than your paraphrase
+    \item For science: golden outputs, sanity-limit checks, property
+      tests. Verify numerics against results you trust.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Trick 4: Stay in Control}
+  \begin{itemize}
+    \item \textbf{Review the diff, not the vibes:} you own what ships
+      (papers, repos, production)
+    \item Keep \textbf{humans on approval} for destructive or
+      far-reaching commands; sandbox the agent when you can
+    \item \textbf{Never paste tokens or credentials} into a prompt;
+      keep secrets out of transcripts
+    \item Models \textbf{hallucinate}: invented APIs, imaginary flags,
+      plausible-but-wrong physics. Verify imports, citations, and
+      numerics before they matter.
+    \item Know when \emph{not} to vibe: unverifiable correctness-critical
+      code, security-sensitive paths
+  \end{itemize}
+\end{frame}
+
+\section{Crash Course}
+
+\begin{frame}{Your Mission: Tetris, With a Copilot}
+  \begin{itemize}
+    \item You'll get a Rust scaffold: a working window, render loop, and
+      board utilities; the \emph{game logic} is left for you and your
+      agent to fill in
+    \item Increments we'll build together:
+    \begin{enumerate}
+      \item board state \& piece spawning
+      \item gravity, collision, movement
+      \item rotation \& line clears
+      \item score, next-piece preview, polish
+    \end{enumerate}
+    \item Every step is the same loop: \textbf{prompt $\rightarrow$ code
+      $\rightarrow$ \texttt{cargo run} $\rightarrow$ read the error
+      $\rightarrow$ refine}
+    \item You are the architect; the agent is the executor; the compiler
+      is the referee
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Transition: Get Ready to Vibe}
+  \begin{itemize}
+    \item \textbf{Crash-course checklist} (do these now, on your laptop):
+  \end{itemize}
+  \begin{minted}[fontsize=\tiny]{bash}
+# 1) uv -- needed for alcf-ai
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2) authenticate + point OpenCode at ALCF
+uvx alcf-ai auth login
+uvx alcf-ai agent configure opencode
+# prefer Claude Code? uvx alcf-ai agent configure claude
+
+# 3) OpenCode itself, and Rust for the Tetris scaffold
+curl -fsSL https://opencode.ai/install | bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  \end{minted}
+  \begin{itemize}
+    \item Clone the Tetris scaffold (repo URL to be posted)
+    \item Docs: \url{https://docs.alcf.anl.gov/services/inference-endpoints}
+      (\texttt{\#agents}); code:
+      \url{https://github.com/argonne-lcf/inference-endpoints}
+    \item Help: \texttt{support@alcf.anl.gov} (mailing list in references)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Troubleshooting}
+  \begin{itemize}
+    \item \textbf{Access tokens expire after 48 h:} re-run
+      \texttt{uvx alcf-ai agent configure <agent>}; re-authenticate at
+      Globus roughly every 30 days
+    \item \textbf{OpenAI Codex $\geq$ 0.95} speaks the Responses API only:
+      pin \texttt{0.94} or lower on Sophia/Metis, or point Codex at Minerva
+    \item \textbf{Responses and Messages streaming is disabled} on
+      non-Direct-API clusters (Sophia, Metis); use Chat Completions or
+      Minerva
+    \item \textbf{Metis tool-calling is flaky} (SambaNova sanitization);
+      prefer Sophia for agent workloads
+    \item \textbf{Cold starts on Sophia:} non-hot models can take
+      10--15 min to load, so prefer \textbf{H} models (check the Web UI
+      or \texttt{/jobs})
+  \end{itemize}
+\end{frame}
+
+\appendix
+
+
+\begin{frame}{References}
+  \footnotesize
+  \begin{itemize}
+    \item ALCF Inference Endpoints docs (incl.\ \texttt{\#agents}):
+      \url{https://docs.alcf.anl.gov/services/inference-endpoints}
+    \item ALCF Inference Endpoints repo \& examples:
+      \url{https://github.com/argonne-lcf/inference-endpoints}
+    \item \texttt{alcf-ai} on PyPI:
+      \url{https://pypi.org/project/alcf-ai/}
+    \item Harness homepages: OpenCode \url{https://opencode.ai/}; Pi
+      \url{https://pi.dev/}; Claude Code
+      \url{https://code.claude.com/docs/en/quickstart}; Codex
+      \url{https://learn.chatgpt.com/docs/codex/cli}
+    \item Karpathy, A. (Feb 2025): \enquote{vibe coding} post on X
+    \item Tanikanti et al., \textit{FIRST: Federated Inference Resource
+      Scheduling Toolkit for Scientific AI Model Access}, SC Workshops '25.
+      \url{https://doi.org/10.1145/3731599.3767346}
+    \item Mailing list: \texttt{inference-service-notify} (
+      \url{https://lists.alcf.anl.gov/mailman/listinfo/inference-service-notify})
+  \end{itemize}
+\end{frame}
+
+\end{document}
