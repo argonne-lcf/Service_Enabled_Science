@@ -71,7 +71,7 @@ not working yet, start there and sort out credentials while it runs.
 | File | Description |
 |---|---|
 | [`00_ask_alcf_docs.py`](00_ask_alcf_docs.py) | Consume a remote MCP server ALCF already runs — no token required |
-| [`ask_alcf_proxy.py`](ask_alcf_proxy.py) | A stdio forwarder to that server, for clients Cloudflare blocks (opencode) |
+| [`ask_alcf_proxy.py`](ask_alcf_proxy.py) | A stdio forwarder to that server, as a fallback for clients Cloudflare 403s |
 | [`alcf_mcp.py`](alcf_mcp.py) | The MCP server: six IRI calls and four Globus staging tools, exposed as agent tools |
 | [`01_call_tools_directly.py`](01_call_tools_directly.py) | Connect as a client and see the tools the way a model sees them |
 | [`skills/polaris-job/SKILL.md`](skills/polaris-job/SKILL.md) | An example skill: the judgment that does not belong in a tool |
@@ -99,9 +99,10 @@ claude      # or: opencode
 > agent spawns these servers as subprocesses and waits only a few seconds for
 > the MCP handshake — opencode's default is 5 s. Measured here: launching from
 > the pre-built `.venv` handshakes in **~0.5 s**, while a cold dependency
-> resolve takes **~13 s** and blows the budget. That gap is the difference
-> between "ten tools" and an unexplained "MCP server failed to start" —
-> especially with a roomful of people hitting PyPI at once.
+> resolve took **~4 s** and pulled **104 MB** — inside the 5 s budget on a good
+> link, but with no margin, and that 104 MB is per person. With a roomful of
+> people hitting PyPI at once it is the difference between "ten tools" and an
+> unexplained "MCP server failed to start".
 
 The scripts also carry PEP 723 headers, so `uv run 00_ask_alcf_docs.py` still
 works standalone if you have not built the venv. That is fine when *you* are
@@ -163,7 +164,7 @@ globus endpoint local-id             # from the tutorial .venv
 ```
 Globus Online:   connected
 Transfer Status: idle
-b8f4ffee-9799-11f1-b623-02ce27bde401
+xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx     # yours will differ
 ```
 
 **Do not write that UUID down.** The MCP server resolves it the same way
@@ -260,35 +261,56 @@ To see the same handshake without an agent in the way:
 ../.venv/bin/python 00_ask_alcf_docs.py "How do I request 4 GPUs on Polaris?"
 ```
 
-### ⚠️ If you are using opencode, use the proxy
+### ⚠️ If your client gets a 403, use the proxy
 
-The endpoint is behind Cloudflare, which accepts or rejects clients by TLS
-fingerprint. As tested on 2026-09-27:
+The endpoint sits behind Cloudflare, which accepts or rejects clients by **TLS
+fingerprint** rather than by anything in the request. Measured from one network
+on 2026-09-28:
 
 | Client | Direct to the URL |
 |---|---|
 | Claude Code (`--transport http`) | ✅ connects |
-| Python — `fastmcp`, `httpx`, `requests` | ✅ connects |
-| `curl` | ✅ connects |
-| **opencode** | ❌ **403** |
-| Node `fetch`, Python `urllib` | ❌ 403 |
+| opencode 1.18.18 | ✅ connects |
+| `curl` | ✅ 200 |
+| Python — `fastmcp`, `httpx`, `requests` | ✅ 200 |
+| Node `fetch` | ❌ 403 |
+| Python `urllib` | ❌ 403 |
+| `curl` **with a browser `User-Agent`** | ❌ 403 |
 
-Setting a browser `User-Agent` does not help — the block is below the header
-layer. Since Python is allowed through, running the bundled stdio forwarder
-restores access. That is what [`opencode.jsonc`](opencode.jsonc) in this
-directory already does:
+Two things worth drawing out, because both are counter-intuitive:
+
+- **A browser `User-Agent` makes things worse, not better.** Plain `curl` gets
+  200; the same `curl` with a Chrome UA gets 403, reproducibly. The edge is
+  comparing the claimed header against the TLS handshake, and a mismatch is
+  more suspicious than an honest CLI.
+- **You cannot infer a client from its runtime.** opencode is Bun-compiled, so
+  the Node `fetch` result above does *not* predict it — opencode connects fine.
+  Test the client you will actually run.
+
+So both supported agents *can* reach this server directly, and Claude Code's
+[`.mcp.json`](.mcp.json) does exactly that. [`opencode.jsonc`](opencode.jsonc)
+deliberately does **not** — it routes through the bundled stdio forwarder
+instead. That is a belt-and-braces choice for a live workshop: the table above
+was measured from one network, Cloudflare's edge can rule differently from the
+conference wifi, and the Python path is the one most likely to survive. Point
+opencode straight at the URL if you prefer; it works from here.
+
+That makes the two files worth reading side by side — the *same* server, reached
+two ways. If you need the forwarder,
+[`ask_alcf_proxy.py`](ask_alcf_proxy.py) relays stdio to the same HTTPS endpoint
+from Python, which is allowed through:
 
 ```jsonc
 "ask-alcf": {
   "type": "local",
-  "command": ["uv", "run", "ask_alcf_proxy.py"],
+  "command": ["../.venv/bin/python", "ask_alcf_proxy.py"],
   "enabled": true
 }
 ```
 
-Note that the two clients reach the *same* server by different routes — direct
-HTTPS for Claude Code, a local subprocess for opencode. Compare the two files
-side by side; the divergence is the Cloudflare block, and nothing else.
+That is the lesson worth keeping: one server, two transports. When a remote MCP
+endpoint is unreachable from your client but reachable from *some* runtime you
+have, a ~50-line stdio forwarder recovers it without touching the server.
 
 opencode merges this project file with your global
 `~/.config/opencode/opencode.jsonc`, so the Inference Service provider from
@@ -599,7 +621,7 @@ how you adopt a shared service without accepting it exactly as shipped.
 | A staging tool raises a long "Globus needs an additional consent" message | Exactly what it says: run the `alcf-tokens login --authorize-transfer …` line in the error. The tool prints the scopes Globus asked for, so paste them into a support question if the login does not clear it. |
 | `local_endpoint` raises but `./globusconnectpersonal -status` says connected | The agent's server is running as a different user, or with a different `$HOME`, than the GCP install. Both read `~/.globusonline/lta/client-id.txt`. |
 | GCP will not install on ARM Linux | Globus ships no `aarch64` Linux build; the tarball is x86-64 only and needs emulation plus a 64-bit loader. Apple Silicon is fine — the macOS build handles it. |
-| `ask-alcf` 403s under opencode | It is reaching the URL directly instead of the proxy — the global config is winning. Check `opencode.jsonc` here is being picked up. |
+| `ask-alcf` 403s in any client | Cloudflare is rejecting that client's TLS fingerprint from your network. Switch that entry to the stdio proxy (`["../.venv/bin/python", "ask_alcf_proxy.py"]`) — see §2. Do **not** add a browser `User-Agent`; it makes the 403 more likely, not less. |
 | Tools are listed but never called | Your model is not tool-capable. Switch with `/models` and pick one the Inference Service advertises tool support for. |
 
 ## Where this goes

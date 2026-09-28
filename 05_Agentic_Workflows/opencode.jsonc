@@ -11,8 +11,11 @@
   // so start it from HERE.
   "mcp": {
     // Same server Claude Code's .mcp.json reaches over plain HTTPS, but routed
-    // through a local Python forwarder: ask.alcf.anl.gov sits behind
-    // Cloudflare, which 403s opencode by TLS fingerprint. See ask_alcf_proxy.py.
+    // through a local Python forwarder. ask.alcf.anl.gov sits behind Cloudflare,
+    // which accepts or rejects clients by TLS fingerprint; opencode 1.18.18 is
+    // accepted directly, but Python is the path least likely to be blocked from
+    // an unfamiliar network, so the workshop default takes it. Swap this to
+    // {"type":"remote","url":"https://ask.alcf.anl.gov/mcp"} if you prefer.
     "ask-alcf": {
       "type": "local",
       "command": ["../.venv/bin/python", "ask_alcf_proxy.py"],

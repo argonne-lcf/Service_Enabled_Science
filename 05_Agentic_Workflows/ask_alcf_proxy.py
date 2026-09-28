@@ -6,17 +6,21 @@
 A local stdio server that forwards to https://ask.alcf.anl.gov/mcp.
 
 Why this exists: the endpoint sits behind Cloudflare, which rejects some HTTP
-clients by TLS fingerprint regardless of headers. Claude Code connects to the
-URL directly and needs none of this; opencode gets a 403. Python's HTTP stack
-is allowed through, so running this locally over stdio restores access for any
+clients by TLS fingerprint regardless of headers -- Node `fetch` and Python
+`urllib` both get a 403. Claude Code and opencode each connect to the URL
+directly and need none of this, so this is a *fallback* for clients that do not,
+or for networks where the edge behaves differently. Python's HTTP stack is
+allowed through, so running this locally over stdio restores access for any
 client that can launch a subprocess.
 
-    uv run ask_alcf_proxy.py     # normally launched by your agent, not by hand
+    ../.venv/bin/python ask_alcf_proxy.py   # normally launched by your agent
 
-Already wired up in opencode.jsonc next to this file:
+To use it, point the `ask-alcf` entry in opencode.jsonc (or .mcp.json) at this
+file instead of at the URL:
 
     { "mcp": { "ask-alcf": { "type": "local",
-        "command": ["uv", "run", "ask_alcf_proxy.py"], "enabled": true } } }
+        "command": ["../.venv/bin/python", "ask_alcf_proxy.py"],
+        "enabled": true } } }
 
 The shape is the lesson: this server is also a *client* of another server. Once
 you own the middle, you can log every question, cache repeated ones, or refuse
