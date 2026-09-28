@@ -2,3 +2,13 @@ alcf-tokens
 globus-compute-sdk>=4
 alcf-ai
 globus-cli
+
+# 05_Agentic_Workflows: the MCP servers and their clients.
+# These live here rather than in a session-local file so the agent can launch
+# alcf_mcp.py from the repo .venv -- an MCP server has seconds to answer the
+# handshake (opencode's default is 5 s), which is not enough to resolve
+# dependencies on the fly.
+fastmcp>=2.10,<5      # verified against 4.0.10
+requests              # alcf_mcp.py calls the Facility API
+globus-sdk>=3,<5      # alcf_mcp.py's staging tools; also pulled in by globus-cli
+rich                  # table output in 00_ask_alcf_docs.py, 01_call_tools_directly.py
