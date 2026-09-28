@@ -4,6 +4,8 @@
 · [huihuo.zheng@anl.gov](mailto:huihuo.zheng@anl.gov)  
 Service-Enabled Science Workshop, 30 September 2026
 
+**Slides** — [`slides.pdf`](slides.pdf)
+
 A coding agent is only as useful on HPC as what it can *see* and *do* there.
 This session connects one to two **MCP servers** — a documentation server ALCF
 already runs, and one you write yourself in front of the Facility API from
