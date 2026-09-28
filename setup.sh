@@ -14,6 +14,10 @@ uv pip install --python .venv/bin/python -r requirements.txt
 command -v opencode >/dev/null || curl -fsSL https://opencode.ai/install | bash
 command -v claude >/dev/null || curl -fsSL https://claude.ai/install.sh | bash
 
+# Authenticate only if we don't already hold a valid inference token
+uvx alcf-tokens test-token inference >/dev/null 2>&1 \
+  || uvx alcf-tokens login --authorize-transfer home --authorize-transfer eagle
+
 # Point opencode at the ALCF Inference Service
 uvx alcf-ai agent configure opencode
 
