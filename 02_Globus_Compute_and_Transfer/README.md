@@ -464,6 +464,21 @@ Hello from node x3004c0s13b0n0, GPU 3
 Note the `place=scatter` line, which is important for multi-node jobs so the job's workers are spread across nodes.  With 4 workers per node, the script submits 8 tasks per node which will run in 2 batches.
 
 
+## Extra topic: Use Globus Compute with agent harness
+
+Later in this workshop we will talk about agents and agent harnesses, but as a preview, note that Globus Compute can be used with agent harnesses (e.g. claude code or opencode) to interact directly with a compute node on Polaris or Crux.  
+
+The ALCF Agent Skills repository has details of how to do this.  A simple way to do this:
+```bash
+git clone git@github.com:argonne-lcf/alcf-agent-skillset.git
+cd alcf-agent-skillset
+opencode
+```
+Try this prompt:
+"List the contents of my home directory at ALCF.  Use the remote bash skill."
+
+The `remote-bash.py` tool in `alcf-agent-skillset` will ship command line calls to compute nodes at ALCF through the MEPs.  It allows for an agent to execute bash commands on the remote system with a fast turnaround, once a PBS job starts.
+
 ## Troubleshooting
 
 ### Runaway job submission
