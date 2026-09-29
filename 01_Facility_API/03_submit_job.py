@@ -9,13 +9,13 @@ import requests
 from utils import HEADERS
 
 # Select compute cluster
-#RESOURCE_ID="8b9b42f7-572a-4909-8472-a0453436304c" # Crux
-RESOURCE_ID="55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris
+#RESOURCE_ID="8b9b42f7-572a-4909-8472-a0453436304c" # Crux (reservation: R314927)
+RESOURCE_ID="55c1c993-1124-47f9-b823-514ba3849a9a" # Polaris (reservation: R7645913)
 
 # Define job submission parameters
 NODES=1
 WALLTIME_SEC=300
-QUEUE="debug"
+QUEUE="R7645913"
 COMPUTE_ALLOCATION="alcf_training"
 STDOUT_PATH="/home/<your-alcf-username>/log_example.out"
 STDERR_PATH="/home/<your-alcf-username>/log_example.err"
