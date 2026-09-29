@@ -3,19 +3,20 @@ from globus_compute_sdk.serialize import ComputeSerializer, AllCodeStrategies
 from alcf_tokens.auth import get_service_authorizer
 
 # This script is intended to be run from your local machine where you have
-# built the workshop client environment.  It sends a function to the 
-# facility-supported Polaris multi-user endpoint (MEP), which runs the 
-# function on a Polaris compute node by submitting a PBS job on the user's behalf.
+# built the workshop client environment.  It sends functions to the 
+# facility-supported Polaris and Crux multi-user endpoints (MEPs), which run the 
+# functions on compute nodes by submitting a PBS jobs on the user's behalf.
 
-# The Polaris MEP is already running as a facility service -- there is no
-# endpoint for you to configure or start.  You only need its UUID.
+# The Polaris and Crux MEPs are already running as a facility service 
+# -- there is no endpoint for you to configure or start.  You only need the UUIDs.
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 CRUX_MEP = "fd8b54bb-9452-411d-8e3a-09408156a886"
 
-# Project and queue used to charge and schedule the PBS jobs the MEP submits
+# Project and queues used to charge and schedule the PBS jobs the MEP submits
 # on your behalf.
 ACCOUNT = "alcf_training"
-QUEUE = "debug"
+POLARIS_QUEUE = "R7645913"
+CRUX_QUEUE = "R314927"
 
 # A simple function that reports the environment it runs in on Polaris.
 # This is a useful first test when checking that the MEP is reachable.
@@ -25,8 +26,8 @@ def hello_affinity():
     import parsl
     import globus_compute_endpoint
 
-    return f""" Hello! I'm Polaris! Here's some of my info:
-                hostname: {socket.gethostname()}
+    return f""" Hello! Here's some of my info:
+                hostname: {socket.getfqdn()}
                 remote environment: {sys.executable}
                 python version: {sys.version}
                 parsl version: {parsl.__version__}
@@ -39,7 +40,7 @@ authorizer = get_service_authorizer("globus-compute")
 gcc = Client(authorizer=authorizer)
 
 # The AllCodeStrategies serializer avoids serialization errors 
-# when the client (Aurora) and the MEP workers (Polaris, python 3.13) 
+# when the client and the MEP workers  
 # run different python versions.
 serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
 
@@ -52,17 +53,18 @@ polaris_gce = Executor(
     client=gcc,
     user_endpoint_config={
         "account": ACCOUNT,
-        "queue": QUEUE,
+        "queue": POLARIS_QUEUE,
     },
 )
 
+# Crux needs its own executor
 crux_gce = Executor(
     endpoint_id=CRUX_MEP,
     serializer=serializer,
     client=gcc,
     user_endpoint_config={
         "account": ACCOUNT,
-        "queue": QUEUE,
+        "queue": CRUX_QUEUE,
     },
 )
 

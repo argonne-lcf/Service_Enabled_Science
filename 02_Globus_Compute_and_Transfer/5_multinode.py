@@ -9,7 +9,7 @@ from alcf_tokens.auth import get_service_authorizer
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
-QUEUE = "debug"
+QUEUE = "R7645913"
 NUM_NODES = 2
 
 
@@ -33,8 +33,8 @@ user_endpoint_config = {
     # Pin one worker per GPU, there are 4 GPUs on a Polaris node
     "max_workers_per_node": 4,
     "available_accelerators": 4,
-    # place=scatter is important for multi-node jobs: it spreads the job's
-    # nodes across the machine.  Remember: Polaris filesystems only.
+    # place=scatter is important for multi-node jobs: it spreads the workers
+    # across the allocated nodes.  Remember: Polaris filesystems only.
     "scheduler_options": (
         "#PBS -l filesystems=home:eagle:grand\n"
         "#PBS -l place=scatter"
@@ -45,7 +45,7 @@ user_endpoint_config = {
 authorizer = get_service_authorizer('globus-compute')
 gcc = Client(authorizer=authorizer)
 with Executor(endpoint_id=POLARIS_MEP,
-              client=gcc,
+                client=gcc,
                 serializer=serializer,
                 user_endpoint_config=user_endpoint_config) as gce:
 

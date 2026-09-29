@@ -4,11 +4,11 @@ from alcf_tokens.auth import get_service_authorizer
 
 # Globus Compute runs Python functions.  Here is an example to WRAP a compiled 
 # executable in a Python function that shells out to it with subprocess.  
-# Here the shell command "hostname; sleep" in for the path to a real compiled executable.
+# Here the shell command "hostname; sleep" stands in for the path to a real compiled executable.
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
-QUEUE = "debug"
+QUEUE = "R7645913"
 
 
 def host_sleep_wrapper(sleeptime):

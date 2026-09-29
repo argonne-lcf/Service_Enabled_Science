@@ -9,7 +9,7 @@ from alcf_tokens.auth import get_service_authorizer
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
-QUEUE = "debug"
+QUEUE = "R7645913"
 
 
 def where_am_i(task_id, sleeptime):
@@ -45,7 +45,7 @@ user_endpoint_config = {
 
 authorizer = get_service_authorizer('globus-compute')
 gcc = Client(authorizer=authorizer)
-# As an alternative to example 1, here we open a context for the Executor and
+# As an alternative to exercise 1, here we open a context for the Executor and
 # make calls within the context.
 with Executor(endpoint_id=POLARIS_MEP,
                 serializer=serializer,
