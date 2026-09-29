@@ -1,4 +1,4 @@
-presentation.pdf: presentation.tex beamerthemesesalcf.sty $(wildcard sesalcf-assets/*) $(wildcard figures/*)
+presentation.pdf: presentation.tex beamerthemesesalcf.sty $(wildcard sesalcf-assets/*) $(wildcard figures/*) $(wildcard opencode-shots/*)
 	latexmk -xelatex -shell-escape -use-make presentation.tex
 
 all: presentation.pdf
