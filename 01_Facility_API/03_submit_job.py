@@ -5,6 +5,7 @@ TODO: Modify STDOUT_PATH/STDERR_PATH variables below to include your ALCF userna
 
 import json
 import requests
+import sys
 
 from utils import HEADERS
 
@@ -28,6 +29,11 @@ whoami
 hostname
 echo End
 """
+
+# ALCF username check
+if "<your-alcf-username>" in STDOUT_PATH or "<your-alcf-username>" in STDERR_PATH:
+    print("Error: Please add your ALCF username in the script.")
+    sys.exit(1)
 
 
 # Submit job to compute resource
