@@ -41,7 +41,8 @@ curl \
 
 ## Web Chat UI
 
-Navigate to <https://inference.alcf.anl.gov> and log in with your ALCF credentials.
+Navigate to <https://inference.alcf.anl.gov> and log in with your ALCF user account or 
+any other DOE lab credentials.
 
 This is an ALCF deployment of Open WebUI, a web-hosted chat application.  The
 backend maintains persistent chat sessions and sends requests (like
@@ -99,6 +100,9 @@ print(
 ```
 
 Run the following examples in a Python environment with [`alcf-ai`](https://pypi.org/project/alcf-ai/) installed.  You can start a REPL with ephemeral dependencies using `uv run --with alcf-ai python`.  The example scripts contain [inline dependencies](https://docs.astral.sh/uv/guides/scripts/#declaring-script-dependencies) and can therefore be run using `uv run example.py` without setting up an environment first.
+
+If you have a virtual environment active, you can use 
+`python <script>.py` in place of `uv run <script>.py`.
 
 | Script | Description |
 |---|---|

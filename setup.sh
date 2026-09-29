@@ -2,6 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Coding agents
+command -v opencode >/dev/null && opencode upgrade || curl -fsSL https://opencode.ai/install | bash
+command -v claude >/dev/null || curl -fsSL https://claude.ai/install.sh | bash
+
 # uv
 command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$PATH"
@@ -9,10 +13,6 @@ export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$PATH"
 # Python environment for the exercise scripts
 [ -d .venv ] || uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
-
-# Coding agents
-command -v opencode >/dev/null || curl -fsSL https://opencode.ai/install | bash
-command -v claude >/dev/null || curl -fsSL https://claude.ai/install.sh | bash
 
 # Authenticate only if we don't already hold a valid inference token
 uvx alcf-tokens test-token inference >/dev/null 2>&1 \
