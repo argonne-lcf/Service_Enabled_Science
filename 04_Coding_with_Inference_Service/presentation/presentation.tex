@@ -162,6 +162,7 @@
       \toprule
       Model & Cluster & Flags & Why \\
       \midrule
+      \texttt{thinkingmachines/Inkling} & Minerva & RTH & capable 975B parameter model; strong tool use  \\
       \texttt{openai/gpt-oss-120b} & Sophia & BRTH & solid default, strong tool use \\
       \texttt{openai/gpt-oss-20b} & Sophia & BRTH & faster, lighter tasks \\
       \texttt{google/gemma-4-31B-it} & Sophia & RTH & strong reasoning \\
@@ -375,50 +376,148 @@ uvx alcf-ai agent configure opencode
 
 \section{Crash Course}
 
-\begin{frame}{Your Mission: Tetris, With a Copilot}
+\begin{frame}{Your Mission: Monte Carlo $\pi$, With a Copilot}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \begin{itemize}
+        \item Throw $N$ random darts at the unit square; the fraction $p$
+          landing in the quarter circle estimates its area:
+          \[
+            \hat\pi = 4p, \qquad
+            \sigma_{\hat\pi} = 4\sqrt{p(1-p)/N}
+          \]
+        \item Small enough to finish in one session, yet it has everything
+          real science code has: numerics, an error bar, a known answer,
+          and a figure
+        \item Same loop every step: \textbf{prompt $\rightarrow$ code
+          $\rightarrow$ \texttt{python pi\_mc.py} $\rightarrow$ look at the
+          plot $\rightarrow$ refine}
+        \item You are the architect; the agent is the executor;
+          $\pi$ is the referee
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=2.6]
+        \fill[SESpanelLight] (0,0) rectangle (1,1);
+        \fill[SESteal!25] (0,0) -- (1,0) arc[start angle=0, end angle=90, radius=1] -- cycle;
+        \draw[SESgrey] (0,0) rectangle (1,1);
+        \draw[SESink, thick] (1,0) arc[start angle=0, end angle=90, radius=1];
+        \foreach \x/\y in {0.12/0.31,0.44/0.18,0.63/0.52,0.27/0.77,0.81/0.29,
+                           0.35/0.46,0.55/0.71,0.18/0.58,0.72/0.12,0.49/0.38}
+          \fill[SESteal] (\x,\y) circle (0.022);
+        \foreach \x/\y in {0.91/0.71,0.78/0.88,0.95/0.44,0.66/0.93}
+          \fill[orange!85!black] (\x,\y) circle (0.022);
+        \node[below, font=\footnotesize, text=SESgrey] at (0.5,0)
+          {$\hat\pi = 4 \times$ inside\,/\,all};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Get Ready to Vibe}
   \begin{itemize}
-    \item You'll get a Rust scaffold: a working window, render loop, and
-      board utilities; the \emph{game logic} is left for you and your
-      agent to fill in
-    \item Increments we'll build together:
-    \begin{enumerate}
-      \item board state \& piece spawning
-      \item gravity, collision, movement
-      \item rotation \& line clears
-      \item score, next-piece preview, polish
-    \end{enumerate}
-    \item Every step is the same loop: \textbf{prompt $\rightarrow$ code
-      $\rightarrow$ \texttt{cargo run} $\rightarrow$ read the error
-      $\rightarrow$ refine}
-    \item You are the architect; the agent is the executor; the compiler
-      is the referee
+    \item \textbf{Checklist:} \texttt{setup.sh} has already installed uv,
+      OpenCode, and the Python environment, logged you in, and set up
+      OpenCode for ALCF
+  \end{itemize}
+  \begin{minted}[fontsize=\footnotesize]{bash}
+cd Service_Enabled_Science
+./setup.sh                    # safe to re-run; refreshes your token
+source .venv/bin/activate     # numpy + matplotlib now on PATH
+
+mkdir -p ~/pi-demo && cd ~/pi-demo
+git init                      # your undo button
+opencode                      # pick inkling-bf16 (Minerva)
+  \end{minted}
+  \begin{itemize}
+    \item Use a new, empty directory so the agent can't find the
+      reference \texttt{solution.py}
+    \item The full prompt and the follow-ups are in
+      \texttt{04\_Coding\_with\_Inference\_Service/PROMPT.md}
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Transition: Get Ready to Vibe}
-  \begin{itemize}
-    \item \textbf{Crash-course checklist} (do these now, on your laptop):
-  \end{itemize}
-  \begin{minted}[fontsize=\tiny]{bash}
-# 1) uv -- needed for alcf-ai
-curl -LsSf https://astral.sh/uv/install.sh | sh
+\begin{frame}[fragile]{Anatomy of a Good Prompt}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{minted}[fontsize=\tiny]{text}
+Write a single Python script, pi_mc.py, that
+estimates pi with Monte Carlo sampling and makes
+a publication-quality figure of the result.
 
-# 2) authenticate + point OpenCode at ALCF
-uvx alcf-ai auth login
-uvx alcf-ai agent configure opencode
-# prefer Claude Code? uvx alcf-ai agent configure claude
+Environment:
+- Use the `python` already on PATH (numpy +
+  matplotlib). Do not pip install anything.
+- Headless: savefig only, never plt.show().
 
-# 3) OpenCode itself, and Rust for the Tetris scaffold
-curl -fsSL https://opencode.ai/install | bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-  \end{minted}
-  \begin{itemize}
-    \item Clone the Tetris scaffold (repo URL to be posted)
-    \item Docs: \url{https://docs.alcf.anl.gov/services/inference-endpoints}
-      (\texttt{\#agents}); code:
-      \url{https://github.com/argonne-lcf/inference-endpoints}
-    \item Help: \texttt{support@alcf.anl.gov} (mailing list in references)
-  \end{itemize}
+The math:
+- N uniform points, np.random.default_rng(seed),
+  vectorized; pi_hat = 4p;
+  stderr = 4*sqrt(p(1-p)/N).
+- Print the estimate +/- stderr; fail if it is
+  more than 3 stderr from math.pi.
+
+The figure: (1) dartboard scatter, (2) running
+estimate with a +/-2 sigma band on a log x-axis,
+(3) log-log error vs. a sigma/sqrt(N) line.
+
+Then run it twice, show me the output, and fix
+any errors before you report back.
+      \end{minted}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{itemize}\small
+        \item \textbf{Name the deliverable:} one file, one output
+        \item \textbf{Pin the environment:} open models guess the
+          environment wrong unless you tell them what's installed
+        \item \textbf{Spell out the science:} formulas, units,
+          and expected values; the model can't guess your physics
+        \item \textbf{Describe the figure panel by panel:}
+          \enquote{make it pretty} gives a generic plot
+        \item \textbf{Build in a check:} the $3\sigma$ assert and
+          \enquote{run it} let the agent fix its own mistakes
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{What Good Looks Like}
+  \centering
+  \includegraphics[height=0.60\textheight]{figures/pi_monte_carlo.png}\par
+  \vspace{0.3em}
+  \footnotesize\raggedright
+  $10^6$ samples: $\hat\pi = 3.14117 \pm 0.00164$, which is $0.26\sigma$
+  from $\pi$. The error follows the $N^{-1/2}$ line, so each additional
+  digit of $\pi$ takes $100\times$ more samples.
+\end{frame}
+
+\begin{frame}{Check the Agent's Work, Then Push Further}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Verify}
+      \begin{itemize}\small
+        \item Run it yourself: $10^6$ samples should give an estimate
+          within $\sim$0.003 of $\pi$
+        \item Open the PNG: dots split at the arc, the estimate settles
+          onto $\pi$, the error slope matches $N^{-1/2}$
+        \item Read the diff: no Python loop over samples, no
+          \texttt{plt.show()}, no \texttt{pip install}
+        \item Commit once it works
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Then, one prompt at a time}
+      \begin{itemize}\small
+        \item Run $K$ independent seeds: is their spread consistent with
+          the standard error?
+        \item Time $N = 10^5 \dots 10^8$ and report how runtime scales
+        \item Add a \texttt{pytest} check against $\pi$ for several seeds
+        \item Swap in a Sobol sequence (\texttt{scipy.stats.qmc}):
+          how much faster does the error fall?
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Troubleshooting}

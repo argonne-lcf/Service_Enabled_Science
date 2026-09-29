@@ -3,6 +3,10 @@ globus-compute-sdk>=4
 alcf-ai
 globus-cli
 
+# 04_Coding_with_Inference_Service: the Monte Carlo pi crash course.
+numpy
+matplotlib
+
 # 05_Agentic_Workflows: the MCP servers and their clients.
 # These live here rather than in a session-local file so the agent can launch
 # alcf_mcp.py from the repo .venv -- an MCP server has seconds to answer the

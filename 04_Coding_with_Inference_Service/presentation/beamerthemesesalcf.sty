@@ -19,14 +19,20 @@
 \RequirePackage{graphicx}
 \RequirePackage[table]{xcolor}
 
-%% Arial under XeLaTeX/LuaLaTeX, Nimbus Sans otherwise; Menlo for mono.
+%% Arial under XeLaTeX/LuaLaTeX (TeX Gyre Heros if Arial is missing, e.g.
+%% in the TeX Live container), Nimbus Sans otherwise; Menlo for mono.
 \RequirePackage{iftex}
 \ifPDFTeX
   \RequirePackage[scaled=0.85]{helvet}
   \RequirePackage[scaled=0.82]{beramono}
 \else
   \RequirePackage{fontspec}
-  \IfFontExistsTF{Arial}{\setsansfont{Arial}\setmainfont{Arial}}{}
+  \IfFontExistsTF{Arial}{\setsansfont{Arial}\setmainfont{Arial}}{%
+    \IfFontExistsTF{texgyreheros-regular.otf}{%
+      \setsansfont{texgyreheros}[Extension=.otf, UprightFont=*-regular,
+        BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]%
+      \setmainfont{texgyreheros}[Extension=.otf, UprightFont=*-regular,
+        BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]}{}}
   \IfFontExistsTF{Menlo}{\setmonofont{Menlo}}{%
     \IfFontExistsTF{DejaVu Sans Mono}{\setmonofont{DejaVu Sans Mono}}{}}
 \fi
