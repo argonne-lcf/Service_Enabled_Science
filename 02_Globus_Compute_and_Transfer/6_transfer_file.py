@@ -2,17 +2,12 @@ import time
 from globus_sdk import TransferClient, TransferData
 from alcf_tokens.auth import get_service_authorizer
 
-# This script transfers a file with Globus without needing your own Globus
-# client ID.  It uses the public native client bundled with alcf_tokens, so
-# authentication is handled for you -- just log in once with:
-#
-#     alcf-tokens login --authorize-transfer eagle:data_access --authorize-transfer home:data_access
-#
-# after which the stored tokens are reused (and refreshed) automatically.
+# This script transfers a file with Globus from the ALCF home filesystem to the
+# eagle filesystem.  Before beginning paste your ALCF username below:
 
 # Specify your ALCF USERNAME to find your home directory on the home collection, e.g.:
-ALCF_USERNAME = "csimpson"
-#ALCF_USERNAME = 
+# ALCF_USERNAME = "csimpson"
+ALCF_USERNAME = 
 
 # Globus collection ids.
 SRC_COLLECTION = "05d2c76a-e867-4f67-aa57-76edeb0beda0"  # eagle

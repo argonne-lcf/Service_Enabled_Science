@@ -9,7 +9,7 @@ from alcf_tokens.auth import get_service_authorizer
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
-QUEUE = "debug"
+QUEUE = "R7645913"
 
 
 def where_am_i(task_id, sleeptime):
@@ -29,6 +29,12 @@ user_endpoint_config = {
     # Required: project to charge and queue to submit to
     "account": ACCOUNT,
     "queue": QUEUE,
+    # worker_init is where you can add your own environment commands that will be set 
+    # before the workload is run on the compute nodes.  Note that if you activate a python
+    # environment in worker_init, it is recommended that you match the parsl version in 
+    # the MEP environment (returned by the function used in exercise 1).  The machine 
+    # conda env on Polaris (activated here) has this installed.
+    "worker_init": "module use /soft/modulefiles; module load conda; conda activate base",
     # Walltime of the PBS job the MEP submits on your behalf
     "walltime": "00:10:00",
     # One PBS job (block) of a single node
@@ -45,7 +51,7 @@ user_endpoint_config = {
 
 authorizer = get_service_authorizer('globus-compute')
 gcc = Client(authorizer=authorizer)
-# As an alternative to example 1, here we open a context for the Executor and
+# As an alternative to exercise 1, here we open a context for the Executor and
 # make calls within the context.
 with Executor(endpoint_id=POLARIS_MEP,
                 serializer=serializer,

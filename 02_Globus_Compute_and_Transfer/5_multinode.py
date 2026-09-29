@@ -9,7 +9,7 @@ from alcf_tokens.auth import get_service_authorizer
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
-QUEUE = "debug"
+QUEUE = "R7645913"
 NUM_NODES = 2
 
 
@@ -33,8 +33,8 @@ user_endpoint_config = {
     # Pin one worker per GPU, there are 4 GPUs on a Polaris node
     "max_workers_per_node": 4,
     "available_accelerators": 4,
-    # place=scatter is important for multi-node jobs: it spreads the job's
-    # nodes across the machine.  Remember: Polaris filesystems only.
+    # place=scatter is important for multi-node jobs: it spreads the workers
+    # across the allocated nodes.  Remember: Polaris filesystems only.
     "scheduler_options": (
         "#PBS -l filesystems=home:eagle:grand\n"
         "#PBS -l place=scatter"
@@ -45,12 +45,12 @@ user_endpoint_config = {
 authorizer = get_service_authorizer('globus-compute')
 gcc = Client(authorizer=authorizer)
 with Executor(endpoint_id=POLARIS_MEP,
-              client=gcc,
+                client=gcc,
                 serializer=serializer,
                 user_endpoint_config=user_endpoint_config) as gce:
 
-    # Two tasks per node.  With one worker per node they run one at a time
-    # on each node, so you should see each hostname reported twice.
+    # Submit two tasks per GPU.  With one worker per GPU they run one at a time
+    # on each worker, so you should see each hostname/GPU combination reported twice.
     futures = [gce.submit(query_host) for _ in range(2 * NUM_NODES * 4)]
 
     print(f"Submitted {2 * NUM_NODES * 4} tasks across {NUM_NODES} nodes, "
