@@ -461,7 +461,7 @@ Hello from node x3004c0s13b0n0, GPU 1
 Hello from node x3004c0s13b0n0, GPU 3
 ```
 
-Note the `place=scatter` line, which is important for multi-node jobs so the block's workers are spread across nodes.  With one worker per node, the script submits two tasks per node (they run one at a time on each node), so you should see each Polaris compute-node hostname reported twice.
+Note the `place=scatter` line, which is important for multi-node jobs so the job's workers are spread across nodes.  With 4 workers per node, the script submits 8 tasks per node which will run in 2 batches.
 
 
 ## Troubleshooting
@@ -513,7 +513,7 @@ ALCF supports Globus transfer collections on the Home filesystem (mounted on Pol
 | Grand | 3caddd4a-bb35-4c3d-9101-d9a0ad7f3a30 |
 | Flare | f39a7a0f-5bfc-46ce-9615-ba9f8592814f |
 
-Projects with allocations on Eagle can create their own Guest Collection, with project-specific permissions.
+Projects with allocations on Eagle can create their own Guest Collection, with project-specific permissions.  See the [documentation](https://docs.alcf.anl.gov/data-management/acdc/eagle-data-sharing/) for details.
 
 ## Example - transfer a file (`6_transfer_file.py`)
 
