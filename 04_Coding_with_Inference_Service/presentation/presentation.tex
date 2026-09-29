@@ -162,6 +162,7 @@
       \toprule
       Model & Cluster & Flags & Why \\
       \midrule
+      \texttt{thinkingmachines/Inkling} & Minerva & RTH & capable 975B parameter model; strong tool use  \\
       \texttt{openai/gpt-oss-120b} & Sophia & BRTH & solid default, strong tool use \\
       \texttt{openai/gpt-oss-20b} & Sophia & BRTH & faster, lighter tasks \\
       \texttt{google/gemma-4-31B-it} & Sophia & RTH & strong reasoning \\
@@ -427,7 +428,7 @@ source .venv/bin/activate     # numpy + matplotlib now on PATH
 
 mkdir -p ~/pi-demo && cd ~/pi-demo
 git init                      # your undo button
-opencode                      # pick openai/gpt-oss-120b (Sophia)
+opencode                      # pick inkling-bf16 (Minerva)
   \end{minted}
   \begin{itemize}
     \item Use a new, empty directory so the agent can't find the

@@ -12,7 +12,10 @@ cd Service_Enabled_Science
 source .venv/bin/activate     # numpy + matplotlib are now on PATH
 mkdir -p ~/pi-demo && cd ~/pi-demo
 git init                      # your undo button
-opencode                      # choose openai/gpt-oss-120b on Sophia
+opencode                      # choose Inkling on Minerva
+
+# If opencode is not in PATH:
+~/.opencode/bin/opencode
 ```
 
 Working in a new directory keeps `solution.py` out of the agent's view.
