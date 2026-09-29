@@ -4,7 +4,8 @@ from alcf_tokens.auth import get_service_authorizer
 
 # Globus Compute runs Python functions.  Here is an example to WRAP a compiled 
 # executable in a Python function that shells out to it with subprocess.  
-# Here the shell command "hostname; sleep" stands in for the path to a real compiled executable.
+# Here the shell command, "hostname; sleep", stands in for the path to 
+# a real compiled executable.
 
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
@@ -16,12 +17,11 @@ def host_sleep_wrapper(sleeptime):
     import subprocess
 
     # Stand-in for a real executable.  A real command must live on a
-    # Polaris-visible filesystem (/home, /eagle, /grand) -- NOT Aurora's
-    # /flare, which Polaris cannot see.
+    # Polaris/Crux-visible filesystem (/home, /eagle, /grand)
     command = f"hostname; sleep {sleeptime}"
 
     # Create and move into a run directory on the Polaris filesystem
-    run_directory = "$HOME/atpesc_globus_mep"
+    run_directory = "$HOME/ses_globus_mep"
     os.makedirs(os.path.expandvars(run_directory), exist_ok=True)
     os.chdir(os.path.expandvars(run_directory))
 
@@ -58,6 +58,7 @@ if __name__ == "__main__":
             "account": ACCOUNT,
             "queue": QUEUE,
             "scheduler_options": "#PBS -l filesystems=home:eagle:grand",
+            "max_idletime": 60,
         },
     )
 

@@ -37,7 +37,7 @@ from alcf_tokens.auth import build_user_app
 #
 
 # --- ALCF username to create path to user's home ---------------
-ALCF_USERNAME = 
+ALCF_USERNAME =
 
 EAGLE_COLLECTION = "05d2c76a-e867-4f67-aa57-76edeb0beda0"  # source (eagle)
 HOME_COLLECTION = "9032dd3a-e841-4687-a163-2720da731b5b"   # destination (home)
@@ -45,7 +45,7 @@ HOME_COLLECTION = "9032dd3a-e841-4687-a163-2720da731b5b"   # destination (home)
 # --- Compute endpoint and function -------------------------------------------
 POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
 ACCOUNT = "alcf_training"
-QUEUE = "debug"
+QUEUE = "R7645913"
 
 # The `adder` function id written by exercise 3 (3_register_function.py).
 FUNC_ID_FILE = "REGISTERED_FUNC_ID"

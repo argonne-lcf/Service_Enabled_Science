@@ -5,14 +5,28 @@ This session will demonstrate how to use Globus tools on ALCF systems.  We will 
 
 # Setup
 
-If you have done this setup at the start of the workshop, you do not need to repeat this step.
+If you have done this setup at the start of the workshop, you do not need to repeat this step and can skip to the start of the [exercises](#globus-compute---alcf-multi-user-endpoints).
 
 ## Environment
 
-To setup your environment on your local 
+To setup the workshop environment on your local machine, try executing the setup script:
+```bash
+cd ..
+./setup.sh
+source .venv/bin/activate
+cd 02_Globus_Compute_and_Transfer
+```
+
+This environment on your local machine will sometimes be called the "client" environment in these exercises.
 
 ## Authentication
 
+To create the authentication tokens needed for the workshop in one command, execute this command:
+```bash
+alcf-tokens login --authorize-transfer eagle:data_access --authorize-transfer home:data_access
+```
+
+This will cover most of the authentication needed for these exercises.  The one exception is that there will be an additional authentication step needed for the Globus Flows example.
 
 # Globus Compute - ALCF Multi-user Endpoints
 
@@ -133,28 +147,28 @@ $ python 1_hello_mep.py
 Submitting hello_affinity to the Polaris MEP, waiting for result...
 Submitting hello_affinity to the Crux MEP, waiting for result...
 Polaris result:
-/Users/csimpson/training/Service_Enabled_Science/_env/lib/python3.14/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
-Environment differences detected between local SDK and endpoint 151c2433-5bf7-2bef-74b3-64ae7e07ecff workers:
-	    SDK: Python 3.14.6/Dill 0.3.9
-	Workers: Python 3.13.11/Dill 0.3.9
-This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
-  warnings.warn(check_result, UserWarning)
-/Users/csimpson/training/Service_Enabled_Science/_env/lib/python3.14/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
-Environment differences detected between local SDK and endpoint e1a12613-579c-4649-229d-738ca919b772 workers:
-	    SDK: Python 3.14.6/Dill 0.3.9
+/Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
+Environment differences detected between local SDK and endpoint 1ca55003-9cf6-d384-4a52-fd1c4444d7a6 workers:
+	    SDK: Python 3.12.13/Dill 0.3.9
 	Workers: Python 3.13.11/Dill 0.3.9
 This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
   warnings.warn(check_result, UserWarning)
  Hello! Here's some of my info:
-                hostname: x3001c0s7b0n0.hsn.cm.polaris.alcf.anl.gov
+                hostname: x3004c0s31b1n0.hsn.cm.polaris.alcf.anl.gov
                 remote environment: /opt/globus-compute-agent/venv-py313/bin/python3
                 python version: 3.13.11 (main, Mar  2 2026, 18:34:28) [GCC 7.5.0]
                 parsl version: 2026.02.23
                 GCE version: 4.9.0
             
 Crux result:
+/Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
+Environment differences detected between local SDK and endpoint 01368c90-3b6c-10ee-0595-7282b9482e99 workers:
+	    SDK: Python 3.12.13/Dill 0.3.9
+	Workers: Python 3.13.11/Dill 0.3.9
+This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
+  warnings.warn(check_result, UserWarning)
  Hello! Here's some of my info:
-                hostname: x1000c2s3b1n1.hostmgmt2000.cm.crux.alcf.anl.gov
+                hostname: x1000c0s0b0n0.hostmgmt2000.cm.crux.alcf.anl.gov
                 remote environment: /opt/globus-compute-agent/venv-py313/bin/python3
                 python version: 3.13.11 (main, Mar  2 2026, 18:34:28) [GCC 7.5.0]
                 parsl version: 2026.02.23
@@ -244,20 +258,20 @@ Outputs should look like this (with a different node and pid):
 ```console
 $ python configure_endpoint_options.py
 Submitted 8 tasks to a 4-worker node, waiting for results...
-/Users/csimpson/training/Service_Enabled_Science/_env/lib/python3.14/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
-Environment differences detected between local SDK and endpoint 002b3a68-8554-96b1-8414-757de54ad029 workers:
-	    SDK: Python 3.14.6/Dill 0.3.9
+/Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
+Environment differences detected between local SDK and endpoint 19d05a3a-deac-f813-19a1-083cd617d18d workers:
+	    SDK: Python 3.12.13/Dill 0.3.9
 	Workers: Python 3.13.11/Dill 0.3.9
 This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
   warnings.warn(check_result, UserWarning)
-task  1 ran on x3001c0s19b0n0 and GPU 1(pid 3629965) for 5.0s
-task  3 ran on x3001c0s19b0n0 and GPU 0(pid 3629964) for 5.0s
-task  2 ran on x3001c0s19b0n0 and GPU 3(pid 3629967) for 5.0s
-task  0 ran on x3001c0s19b0n0 and GPU 2(pid 3629966) for 5.0s
-task  4 ran on x3001c0s19b0n0 and GPU 2(pid 3629966) for 5.0s
-task  5 ran on x3001c0s19b0n0 and GPU 1(pid 3629965) for 5.0s
-task  6 ran on x3001c0s19b0n0 and GPU 3(pid 3629967) for 5.0s
-task  7 ran on x3001c0s19b0n0 and GPU 0(pid 3629964) for 5.0s
+task  0 ran on x3005c0s13b1n0 and GPU 0(pid 820999) for 5.0s
+task  3 ran on x3005c0s13b1n0 and GPU 2(pid 821001) for 5.0s
+task  1 ran on x3005c0s13b1n0 and GPU 1(pid 821000) for 5.0s
+task  2 ran on x3005c0s13b1n0 and GPU 3(pid 821002) for 5.0s
+task  6 ran on x3005c0s13b1n0 and GPU 3(pid 821002) for 5.0s
+task  4 ran on x3005c0s13b1n0 and GPU 0(pid 820999) for 5.0s
+task  7 ran on x3005c0s13b1n0 and GPU 2(pid 821001) for 5.0s
+task  5 ran on x3005c0s13b1n0 and GPU 1(pid 821000) for 5.0s
 ```
 
 The full list of options and their defaults is in the [MEP configuration options](https://docs.alcf.anl.gov/services/globus-compute/#configuration-options) documentation.
@@ -299,7 +313,22 @@ python 3_register_function.py
 The expected outputs:
 ```console
 $ python 3_register_function.py
-
+Registered adder; id b99adaf0-7545-4324-b41e-67dd2e52fb4d
+Calling registered adder on the Polaris and Crux MEPs, waiting for results...
+/Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
+Environment differences detected between local SDK and endpoint 1ca55003-9cf6-d384-4a52-fd1c4444d7a6 workers:
+	    SDK: Python 3.12.13/Dill 0.3.9
+	Workers: Python 3.13.11/Dill 0.3.9
+This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
+  warnings.warn(check_result, UserWarning)
+Polaris result: 5 + 10 = 15
+/Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
+Environment differences detected between local SDK and endpoint 01368c90-3b6c-10ee-0595-7282b9482e99 workers:
+	    SDK: Python 3.12.13/Dill 0.3.9
+	Workers: Python 3.13.11/Dill 0.3.9
+This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
+  warnings.warn(check_result, UserWarning)
+Crux result: 2 + 3 = 5
 ```
 
 ## 4. Wrapping a compiled executable (`4_wrap_executable.py`)
@@ -318,12 +347,11 @@ def host_sleep_wrapper(sleeptime):
     import subprocess
 
     # Stand-in for a real executable.  A real command must live on a
-    # Polaris-visible filesystem (/home, /eagle, /grand) -- NOT Aurora's
-    # /flare, which Polaris cannot see.
+    # Polaris/Crux-visible filesystem (/home, /eagle, /grand)
     command = f"hostname; sleep {sleeptime}"
 
     # Create and move into a run directory on the Polaris filesystem
-    run_directory = "$HOME/atpesc_globus_mep"
+    run_directory = "$HOME/ses_globus_mep"
     os.makedirs(os.path.expandvars(run_directory), exist_ok=True)
     os.chdir(os.path.expandvars(run_directory))
 
@@ -347,6 +375,21 @@ def host_sleep_wrapper(sleeptime):
 ```
 
 The wrapper writes its output to a run directory on the Polaris filesystem and also returns stdout/stderr to the client.  A real command must live on a Polaris-visible filesystem (`home`, `eagle`, or `grand`).
+
+The expected outputs should look like:
+```console
+$ python 4_wrap_executable.py
+Submitting host_sleep_wrapper to the Polaris MEP, waiting for result...
+/Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
+Environment differences detected between local SDK and endpoint 71fa9a90-d0c6-ef55-a8b9-a72235bc8af9 workers:
+	    SDK: Python 3.12.13/Dill 0.3.9
+	Workers: Python 3.13.11/Dill 0.3.9
+This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
+  warnings.warn(check_result, UserWarning)
+Results of wrapper function:
+x3005c0s1b0n0
+
+```
 
 
 ## 5. Running across multiple nodes (`5_multinode.py`)
@@ -411,8 +454,8 @@ with Executor(endpoint_id=POLARIS_MEP,
                 serializer=serializer,
                 user_endpoint_config=user_endpoint_config) as gce:
 
-    # Two tasks per node.  With one worker per node they run one at a time
-    # on each node, so you should see each hostname reported twice.
+    # Submit two tasks per GPU.  With one worker per GPU they run one at a time
+    # on each worker, so you should see each hostname/GPU combination reported twice.
     futures = [gce.submit(query_host) for _ in range(2 * NUM_NODES * 4)]
 
     print(f"Submitted {2 * NUM_NODES * 4} tasks across {NUM_NODES} nodes, "
@@ -424,7 +467,29 @@ with Executor(endpoint_id=POLARIS_MEP,
 The expected outputs will look like this (however, you will have different nodes):
 ```console
 $ python 5_multinode.py
-
+Submitted 16 tasks across 2 nodes, waiting for results...
+/Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
+Environment differences detected between local SDK and endpoint 31fffd55-aa3b-e2b0-57cb-9e8d704bcd3d workers:
+	    SDK: Python 3.12.13/Dill 0.3.9
+	Workers: Python 3.13.11/Dill 0.3.9
+This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
+  warnings.warn(check_result, UserWarning)
+Hello from node x3004c0s1b0n0, GPU 2
+Hello from node x3004c0s1b0n0, GPU 3
+Hello from node x3004c0s1b0n0, GPU 1
+Hello from node x3004c0s1b0n0, GPU 0
+Hello from node x3004c0s13b0n0, GPU 3
+Hello from node x3004c0s13b0n0, GPU 2
+Hello from node x3004c0s13b0n0, GPU 1
+Hello from node x3004c0s13b0n0, GPU 0
+Hello from node x3004c0s1b0n0, GPU 0
+Hello from node x3004c0s1b0n0, GPU 1
+Hello from node x3004c0s1b0n0, GPU 2
+Hello from node x3004c0s1b0n0, GPU 3
+Hello from node x3004c0s13b0n0, GPU 2
+Hello from node x3004c0s13b0n0, GPU 0
+Hello from node x3004c0s13b0n0, GPU 1
+Hello from node x3004c0s13b0n0, GPU 3
 ```
 
 Note the `place=scatter` line, which is important for multi-node jobs so the block's workers are spread across nodes.  With one worker per node, the script submits two tasks per node (they run one at a time on each node), so you should see each Polaris compute-node hostname reported twice.
@@ -432,7 +497,7 @@ Note the `place=scatter` line, which is important for multi-node jobs so the blo
 
 ## Troubleshooting
 
-## Runaway job submission
+### Runaway job submission
 
 The most common pitfall is an endpoint that loops, queuing PBS jobs that immediately fail (for example, because of a bad `worker_init` or an unreachable filesystem).  Because the MEP runs your UEP under your account **on Polaris or Crux**, you stop it from one of these machines:
 
@@ -444,11 +509,11 @@ rm ~/.globus_compute/*/daemon.pid
 
 This stops all PBS submissions made on your behalf.  To diagnose, inspect the PBS submit scripts and job logs the MEP created under `~/.globus_compute/<endpoint_name>/submit_scripts` on Polaris (MEP user endpoint names begin with `uep`).
 
-## Logs
+### Logs
 
 The MEP creates a user endpoint (UEP) on the target machine.  The UEP will write logs to the user's home directory in `$HOME/.globus_compute`.  It can sometimes be helpful for debugging to examine the logs that live in that directory.  Each MEP created UEP will have its own subdirectory in `$HOME/.globus_compute`.
 
-## Serialization across python versions
+### Serialization across python versions
 
 The your workstation where you are running the client and the Polaris MEP workers (python 3.13) may run different python versions.  To avoid serialization errors (a `ManagerLost` error mentioning serialization), every script that submits a function uses the `AllCodeStrategies` serializer, which sends the full function source to the endpoint:
 
@@ -458,11 +523,11 @@ serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
 gce = Executor(endpoint_id=..., serializer=serializer, user_endpoint_config=...)
 ```
 
-## A note on filesystems
+### A note on filesystems
 
 The MEP runs your functions **on Polaris or Crux**, so any file paths your functions touch must live on a **Polaris-visible filesystem** — `home`, `eagle`, or `grand`.  This is why the `scheduler_options` in these scripts request `filesystems=home:eagle:grand` and the run directories live under `$HOME`.
 
-# Running your own endpoints
+## Running your own endpoints
 
 Facility MEPs cover most common workloads, but they are only offered on some systems (currently Polaris and Crux) and expose a fixed set of configuration options.  If you need to run on a system without a MEP (for example, Aurora) or need options the MEP does not support, you can run your own **single-user endpoint** on a login node.  This means you install `globus-compute-endpoint`, write a config, and keep the endpoint process alive yourself — the operational burden the MEP otherwise handles for you.
 
@@ -474,16 +539,16 @@ ALCF supports Globus transfer collections on the Home filesystem (mounted on Pol
 
 | Filesystem  | Collection UUID |
 | ------  | ---- |
-| Home |  |
-| Eagle |  |
-| Grand |  |
-| Flare |  |
+| Home | 9032dd3a-e841-4687-a163-2720da731b5b |
+| Eagle | 05d2c76a-e867-4f67-aa57-76edeb0beda0 |
+| Grand | 3caddd4a-bb35-4c3d-9101-d9a0ad7f3a30 |
+| Flare | f39a7a0f-5bfc-46ce-9615-ba9f8592814f |
 
 Projects with allocations on Eagle can create their own Guest Collection, with project-specific permissions.
 
 ## Example - transfer a file (`6_transfer_file.py`)
 
-Workshop participants that are members of the `alcf_training` project will have access to the `home` and `eagle` filesystems.  This example shows a programmatic way of how to transfer a file from `eagle` to `home`.  Globus also provides a web UI that allows for easy point-and-click transfers and a CLI tool.
+Workshop participants that are members of the `alcf_training` project will have access to the `home` and `eagle` filesystems.  This example shows a programmatic way of how to transfer a file from `eagle` to `home`.  We have prestaged a small test file on `eagle` for this example.  Globus also provides a web UI that allows for easy point-and-click transfers and a CLI tool.
 
 To run the example, first paste your ALCF username in the indicated place and then run the script like this:
 ```bash
@@ -544,11 +609,16 @@ if __name__ == "__main__":
     main()
 ```
 
-Expected output:
+Expected output will look like this:
 ```console
 $ python 6_transfer_file.py
-
+Submitted transfer. Task ID: 26bdd54e-bbb3-11f1-8f35-0affd5e180af.
+Waiting for transfer to complete...
+  still transferring... (status: ACTIVE)
+Transfer SUCCEEDED.
 ```
+
+You should now find the test file `test_transfer_file.txt` in your home directory on Polaris/Crux.
 
 # Globus Flows
 
@@ -561,39 +631,39 @@ This exercise builds a two-action flow:
 1. **TransferFile** — transfer the test file from `eagle` to `home`, using the [Transfer action provider](https://docs.globus.org/api/transfer/action-providers/transfer/).  This is the same transfer as `6_transfer_file.py`, but now driven by the flow rather than by a `TransferClient` in your script.
 2. **RunAdder** — run the registered `adder` function (from exercise 3) on a MEP, using the [Compute action provider](https://globus-compute.readthedocs.io/en/stable/actionprovider.html).  The transfer must finish before this step begins.
 
-Each action is a state in the flow definition.  `Next`/`End` wire them in sequence:
-
-```python
-"TransferFile": {
-    "Type": "Action",
-    "ActionUrl": "https://transfer.actions.globus.org/transfer",
-    "Parameters": {
-        "source_endpoint": EAGLE_COLLECTION,
-        "destination_endpoint": HOME_COLLECTION,
-        "DATA": [{"source_path": SRC_PATH, "destination_path": DST_PATH}],
-    },
-    "Next": "RunAdder",
-},
-"RunAdder": {
-    "Type": "Action",
-    "ActionUrl": "https://compute.actions.globus.org/v3",
-    "Parameters": {
-        "endpoint_id": POLARIS_MEP,
-        "tasks": [{"function_id": func_id, "kwargs": {"a": 5, "b": 10}}],
-        "user_endpoint_config": {"account": ACCOUNT, "queue": QUEUE},
-    },
-    "End": True,
-},
-```
-
 **Prerequisite:** run `3_register_function.py` first — it writes the `adder` function id to `REGISTERED_FUNC_ID`, which this script reads.
 
+The flow definition is expressed in the form of a JSON object that chains actions as shown in [`7_run_flow.py`](./7_run_flow.py) that can take inputs.
+
+Note that the authentication scope for flows is attached to each flow individually and therefore can't be authenticated prior to the registration of the flow and the creation of the flow id.  Therefore, after your flow is registrered, when the script runs the flow for the first time, you will be prompted to authenticate with Globus.
+
+To run the example, first paste your ALCF username in the spot indicated in the exercise script (like was done for the transfer exercise) and then run the script:
 ```bash
 python 7_run_flow.py
 ```
 
 The script registers the flow, prompts the user for flow authentication, starts a run, prints a `https://app.globus.org/runs/<run_id>` link you can watch in the web app, and polls until the run reaches `SUCCEEDED` or `FAILED`.  Expect a few minutes: the transfer runs first, then the MEP has to start a PBS job on Polaris for the `adder` step.
 
+The expected output will look like this:
+```console
+Registering flow with the Globus Flows service...
+Registered flow. Flow ID: 1514c08f-4eb5-45c5-b4e7-a422bd9a6dc3
 
+Please authenticate with Globus here:
+-------------------------------------
+https://auth.globus.org/v2/oauth2/authorize?...
+-------------------------------------
 
+Enter the resulting Authorization Code here: ...
+Starting flow run with input: {'source_path': '/alcf_training/Service_Enabled_Science/test_transfer_file.txt', 'destination_path': '/csimpson/test_transfer_file.txt', 'endpoint_id': '9a947ba5-f537-4681-acf3-cc66485aadec', 'a': 5, 'b': 10}
+Started run. Run ID: 1d224243-b9c1-4e30-b031-d5751792202d
+Monitor it at https://app.globus.org/runs/1d224243-b9c1-4e30-b031-d5751792202d
+Waiting for flow to complete (Ctrl-C to stop watching)...
+  flow ACTIVE...
+  flow ACTIVE...
+  flow ACTIVE...
+  flow ACTIVE...
+Flow SUCCEEDED.
+Compute action output (5 + 10): {'label': None, 'status': 'SUCCEEDED', 'details': {'result': [15], 'results': [{'output': 15, 'task_id': '907c9298-0b0b-4adf-8cb7-fc5ec2fcf56f'}]}, 'action_id': 'tg_3d1aa0c6-8c26-44d3-a5a7-38f99ff71bf8', 'manage_by': ['urn:globus:auth:identity:bd2b5002-d274-11e5-b446-93314fed2a79'], 'creator_id': 'urn:globus:auth:identity:bd2b5002-d274-11e5-b446-93314fed2a79', 'monitor_by': ['urn:globus:auth:identity:bd2b5002-d274-11e5-b446-93314fed2a79'], 'start_time': '2026-09-29T03:36:52.872171+00:00', 'state_name': 'RunAdder', 'release_after': None, 'display_status': 'All tasks completed', 'completion_time': '2026-09-29T03:37:08.727787+00:00'}
+```
 

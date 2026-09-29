@@ -47,6 +47,7 @@ polaris_gce = Executor(
     user_endpoint_config={
         "account": ACCOUNT,
         "queue": POLARIS_QUEUE,
+        "max_idletime": 60,
     },
 )
 crux_gce = Executor(
@@ -56,6 +57,7 @@ crux_gce = Executor(
     user_endpoint_config={
         "account": ACCOUNT,
         "queue": CRUX_QUEUE,
+        "max_idletime": 60,
     },
 )
 
