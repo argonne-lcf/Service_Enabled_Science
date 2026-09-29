@@ -4,18 +4,15 @@ from alcf_tokens.auth import get_service_authorizer
 
 # This script is intended to be run from your local machine where you have
 # built the workshop client environment.  It sends functions to the 
-# facility-supported Polaris and Crux multi-user endpoints (MEPs), which run the 
-# functions on compute nodes by submitting a PBS jobs on the user's behalf.
+# facility-supported Crux multi-user endpoint (MEP), which runs the 
+# functions on compute nodes by submitting a PBS job on the user's behalf.
 
-# The Polaris and Crux MEPs are already running as a facility service 
-# -- there is no endpoint for you to configure or start.  You only need the UUIDs.
-POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
+# The Crux MEPs
 CRUX_MEP = "fd8b54bb-9452-411d-8e3a-09408156a886"
 
 # Project and queues used to charge and schedule the PBS jobs the MEP submits
 # on your behalf.
 ACCOUNT = "alcf_training"
-POLARIS_QUEUE = "R7645913"
 CRUX_QUEUE = "R314927"
 
 # A simple function that reports the environment it runs in on Polaris.
@@ -47,17 +44,6 @@ serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
 # user_endpoint_config is passed to the MEP, which uses it to provision a
 # user endpoint (UEP) that submits PBS jobs under your account.  "account"
 # and "queue" are always required.
-polaris_gce = Executor(
-    endpoint_id=POLARIS_MEP,
-    serializer=serializer,
-    client=gcc,
-    user_endpoint_config={
-        "account": ACCOUNT,
-        "queue": POLARIS_QUEUE,
-    },
-)
-
-# Crux needs its own executor
 crux_gce = Executor(
     endpoint_id=CRUX_MEP,
     serializer=serializer,
@@ -68,15 +54,7 @@ crux_gce = Executor(
     },
 )
 
-print("Submitting hello_affinity to the Polaris MEP, waiting for result...")
-polaris_future = polaris_gce.submit(hello_affinity)
 print("Submitting hello_affinity to the Crux MEP, waiting for result...")
 crux_future = crux_gce.submit(hello_affinity)
-
-print('Polaris result:')
-print(polaris_future.result())
-print('Crux result:')
 print(crux_future.result())
-
-polaris_gce.shutdown()
 crux_gce.shutdown()

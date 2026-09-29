@@ -48,13 +48,13 @@ The Globus pages linked above give up-to-date details on each endpoint's configu
 
 ### 1. Hello MEP (`1_hello_mep.py`)
 
-The simplest possible test: submit a function that reports the hostname, python version, and package versions of the environment it lands in on Polaris and Crux.  Run this first to confirm your client can reach the MEPs and that authentication works.
+The simplest possible test: submit a simple hello world function to the Crux MEP.  Run this to confirm your client can reach the MEPs and that authentication works.
 
 ```bash
 python 1_hello_mep.py
 ```
 
-Because the MEP has to submit and start PBS jobs on Polaris and Crux the first time, expect this to take a minute.  The results will show and the remote python/parsl/GCE versions.
+Because the MEP has to submit and start a PBS jobs on Crux, expect this to take a minute.  The results will say hello and give information about the python environment running the MEP on Crux.
 
 ```python
 from globus_compute_sdk import Executor, Client
@@ -63,18 +63,15 @@ from alcf_tokens.auth import get_service_authorizer
 
 # This script is intended to be run from your local machine where you have
 # built the workshop client environment.  It sends functions to the 
-# facility-supported Polaris and Crux multi-user endpoints (MEPs), which run the 
-# functions on compute nodes by submitting a PBS jobs on the user's behalf.
+# facility-supported Crux multi-user endpoint (MEP), which runs the 
+# functions on compute nodes by submitting a PBS job on the user's behalf.
 
-# The Polaris and Crux MEPs are already running as a facility service 
-# -- there is no endpoint for you to configure or start.  You only need the UUIDs.
-POLARIS_MEP = "9a947ba5-f537-4681-acf3-cc66485aadec"
+# The Crux MEPs
 CRUX_MEP = "fd8b54bb-9452-411d-8e3a-09408156a886"
 
 # Project and queues used to charge and schedule the PBS jobs the MEP submits
 # on your behalf.
 ACCOUNT = "alcf_training"
-POLARIS_QUEUE = "R7645913"
 CRUX_QUEUE = "R314927"
 
 # A simple function that reports the environment it runs in on Polaris.
@@ -94,7 +91,7 @@ def hello_affinity():
             """
 
 # To use alcf-tokens for authentication, create a Client and Authorizer:
-# To authenticate directly with the Executor, this is not necessary
+# note that if authenticating directly with the Executor, this is not necessary
 authorizer = get_service_authorizer("globus-compute")
 gcc = Client(authorizer=authorizer)
 
@@ -106,17 +103,6 @@ serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
 # user_endpoint_config is passed to the MEP, which uses it to provision a
 # user endpoint (UEP) that submits PBS jobs under your account.  "account"
 # and "queue" are always required.
-polaris_gce = Executor(
-    endpoint_id=POLARIS_MEP,
-    serializer=serializer,
-    client=gcc,
-    user_endpoint_config={
-        "account": ACCOUNT,
-        "queue": POLARIS_QUEUE,
-    },
-)
-
-# Crux needs its own executor
 crux_gce = Executor(
     endpoint_id=CRUX_MEP,
     serializer=serializer,
@@ -127,40 +113,16 @@ crux_gce = Executor(
     },
 )
 
-print("Submitting hello_affinity to the Polaris MEP, waiting for result...")
-polaris_future = polaris_gce.submit(hello_affinity)
 print("Submitting hello_affinity to the Crux MEP, waiting for result...")
 crux_future = crux_gce.submit(hello_affinity)
-
-print('Polaris result:')
-print(polaris_future.result())
-print('Crux result:')
 print(crux_future.result())
-
-polaris_gce.shutdown()
 crux_gce.shutdown()
 ```
 
 The result should look like this:
 ```console
 $ python 1_hello_mep.py
-Submitting hello_affinity to the Polaris MEP, waiting for result...
 Submitting hello_affinity to the Crux MEP, waiting for result...
-Polaris result:
-/Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
-Environment differences detected between local SDK and endpoint 1ca55003-9cf6-d384-4a52-fd1c4444d7a6 workers:
-	    SDK: Python 3.12.13/Dill 0.3.9
-	Workers: Python 3.13.11/Dill 0.3.9
-This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
-  warnings.warn(check_result, UserWarning)
- Hello! Here's some of my info:
-                hostname: x3004c0s31b1n0.hsn.cm.polaris.alcf.anl.gov
-                remote environment: /opt/globus-compute-agent/venv-py313/bin/python3
-                python version: 3.13.11 (main, Mar  2 2026, 18:34:28) [GCC 7.5.0]
-                parsl version: 2026.02.23
-                GCE version: 4.9.0
-            
-Crux result:
 /Users/csimpson/training/Service_Enabled_Science/.venv/lib/python3.12/site-packages/globus_compute_sdk/sdk/client.py:316: UserWarning: 
 Environment differences detected between local SDK and endpoint 01368c90-3b6c-10ee-0595-7282b9482e99 workers:
 	    SDK: Python 3.12.13/Dill 0.3.9
@@ -168,7 +130,7 @@ Environment differences detected between local SDK and endpoint 01368c90-3b6c-10
 This may cause serialization issues.  See https://globus-compute.readthedocs.io/en/latest/sdk/executor_user_guide.html#avoiding-serialization-errors for more information.
   warnings.warn(check_result, UserWarning)
  Hello! Here's some of my info:
-                hostname: x1000c0s0b0n0.hostmgmt2000.cm.crux.alcf.anl.gov
+                hostname: x1000c0s6b0n1.hostmgmt2000.cm.crux.alcf.anl.gov
                 remote environment: /opt/globus-compute-agent/venv-py313/bin/python3
                 python version: 3.13.11 (main, Mar  2 2026, 18:34:28) [GCC 7.5.0]
                 parsl version: 2026.02.23
@@ -221,6 +183,12 @@ user_endpoint_config = {
     # Required: project to charge and queue to submit to
     "account": ACCOUNT,
     "queue": QUEUE,
+    # worker_init is where you can add your own environment commands that will be set 
+    # before the workload is run on the compute nodes.  Note that if you activate a python
+    # environment in worker_init, it is recommended that you match the parsl version in 
+    # the MEP environment (returned by the function used in exercise 1).  The machine 
+    # conda env on Polaris (activated here) has this installed.
+    "worker_init": "module use /soft/modulefiles; module load conda; conda activate base",
     # Walltime of the PBS job the MEP submits on your behalf
     "walltime": "00:10:00",
     # One PBS job (block) of a single node
@@ -252,6 +220,7 @@ with Executor(endpoint_id=POLARIS_MEP,
     print("Submitted 8 tasks to a 4-worker node, waiting for results...")
     for f in as_completed(futures):
         print(f.result())
+
 ```
 
 Outputs should look like this (with a different node and pid):

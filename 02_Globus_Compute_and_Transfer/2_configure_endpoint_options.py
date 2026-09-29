@@ -29,6 +29,12 @@ user_endpoint_config = {
     # Required: project to charge and queue to submit to
     "account": ACCOUNT,
     "queue": QUEUE,
+    # worker_init is where you can add your own environment commands that will be set 
+    # before the workload is run on the compute nodes.  Note that if you activate a python
+    # environment in worker_init, it is recommended that you match the parsl version in 
+    # the MEP environment (returned by the function used in exercise 1).  The machine 
+    # conda env on Polaris (activated here) has this installed.
+    "worker_init": "module use /soft/modulefiles; module load conda; conda activate base",
     # Walltime of the PBS job the MEP submits on your behalf
     "walltime": "00:10:00",
     # One PBS job (block) of a single node
