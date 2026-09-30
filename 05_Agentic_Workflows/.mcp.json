@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "alcf-iri": {
+    "alcf-mcp": {
       "type": "stdio",
       "command": "../.venv/bin/python",
       "args": ["alcf_mcp.py"]
