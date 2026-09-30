@@ -807,13 +807,21 @@ Notice how little `commands` contains. The interesting part is the block you
 ```bash
 export http_proxy=http://proxy.alcf.anl.gov:3128
 export https_proxy=http://proxy.alcf.anl.gov:3128
-module use /soft/modulefiles
-module load conda/2026-10-01
+module use /soft/modulefiles || true
+module load conda/2026-10-01 || true
+_ses_conda_base="$(command -v conda >/dev/null 2>&1 && conda info --base 2>/dev/null)" || true
+[ -n "$_ses_conda_base" ] || _ses_conda_base="/soft/applications/conda/2026-10-01/mconda3"
+[ -r "$_ses_conda_base/etc/profile.d/conda.sh" ] \
+  && . "$_ses_conda_base/etc/profile.d/conda.sh" && conda activate base || true
+command -v python >/dev/null 2>&1 || {
+  echo "preamble: python is not on PATH after loading conda/2026-10-01." >&2
+  ...
+}
 ```
 
-Four lines, three of which exist because of something that fails *quietly*.
-That is also the reason they live in the *server* rather than in the skill: a
-prompt that has to be remembered is a prompt that will eventually be forgotten.
+Every line exists because of something that fails *quietly*. That is also the
+reason they live in the *server* rather than in the skill: a prompt that has to
+be remembered is a prompt that will eventually be forgotten.
 
 - **Compute nodes have no direct internet.** The first run downloads MNIST, and
   that hangs until the walltime kills it — no error, no output — without the
@@ -826,14 +834,38 @@ prompt that has to be remembered is a prompt that will eventually be forgotten.
   has made the default that week, which is not something you want changing
   under a room full of people midway through a workshop.
 
-There is no `conda activate` line here, on the assumption that the module
-leaves you in its base environment. Older Polaris recipes follow the load with
-`source .../profile.d/conda.sh && conda activate base`. That exists because
-`conda activate` is a shell function injected by `conda init`, not a binary:
-a bare `conda activate` works on an account that has run `conda init` and is a
-silent no-op on one that has not, which is a nasty way to differ between the
-presenter's laptop and yours. If your job comes back running the system Python,
-that source line is the thing to add — in `job_preamble()`, not in `commands`.
+- **The module load does not put `python` on `PATH`.** This is the one that
+  bites. `module load conda/...` on its own leaves you with no `python` at all,
+  and the job dies at its first line with `/bin/bash: python: command not
+  found` — three words, minutes later, in PBS stderr, pointing at your script
+  instead of at the environment. You have to source conda's `profile.d` script
+  and then `conda activate base`. `conda activate` is a shell *function* that
+  `conda init` writes into an interactive profile, not a binary, so without
+  that `source` it is a silent no-op on any account that has never run `conda
+  init` — a nasty way for the presenter's laptop to differ from yours.
+- **The base path is resolved, not hard-coded.** The preamble asks the `conda`
+  that the module actually put on `PATH` where its base is, and only falls back
+  to `/soft/applications/conda/<version>/mconda3` if that fails. A written-out
+  path is a second thing to keep in step with the pinned version, and it goes
+  stale exactly when the version is bumped.
+- **Every line is `|| true`, and that is deliberate.** None of this is needed
+  by a job that does no networking and no Python, so none of it should be able
+  to kill one. The subtle case is the `_ses_conda_base=` assignment: a variable
+  assignment takes the exit status of its command substitution, so under a
+  `set -e` inherited from a login profile *that* line — not the guarded ones
+  after it — is what would kill the job before it reached its own first
+  command.
+- **If it still fails, the preamble says so itself.** The closing `command -v
+  python` check prints which `conda.sh` it tried and suggests `module avail
+  conda`, so a wrong pin reports itself at the top of stderr rather than as a
+  missing interpreter further down.
+
+This block was briefly shortened to just the `module load`, on the assumption
+that the module leaves you in its base environment. It does not, and the
+symptom was exactly the `python: command not found` above. The assumption is
+recorded here because the failure is silent in both directions: the shortened
+version looks correct, and Trinity's own Polaris notes had already written the
+fix down under `conda-activate-requires-source`.
 
 Since `commands` is a string passed to `bash -lc`, there is no script file and
 no shebang: a `#!/bin/bash -l` line would just be a comment.

@@ -48,8 +48,9 @@ submit_job(system, commands, stdout_path, nodes=1, queue="debug",
 no file for it to be the first line of, so it would just be a comment.
 
 **The environment is already set up. Write `commands` as the work only.**
-`setup_env=True` (the default) prepends the proxy exports and the pinned conda
-module load to your command block before it is submitted — see `job_preamble()`
+`setup_env=True` (the default) prepends the proxy exports, the pinned conda
+module load, and the `source` + `conda activate base` that actually puts
+`python` on `PATH`, to your command block before it is submitted — see `job_preamble()`
 in `alcf_tools/common.py` for the exact lines and why each one is there. So:
 
 ```python
@@ -120,6 +121,7 @@ rehearsal and fails in the room.
 | `Permission denied` on stdout | `stdout_path` is outside `/home/` and `/eagle/` |
 | File not found on the compute node | The transfer had not finished — you skipped stage 2's poll |
 | Killed at the walltime boundary | `walltime_sec` too short; do not silently raise it |
+| `python: command not found` | Conda did not activate. The preamble detects this itself — read **stderr** for its `preamble:` lines, which name the `conda.sh` it tried and suggest `module avail conda`. Usually the pinned version does not exist on the system |
 | `ModuleNotFoundError` / wrong Python | Conda did not come up. Read **stderr**, not stdout — `job_preamble()` is deliberately non-fatal, so a missing module says so there and the job carries on under the system Python |
 | Download hangs on the compute node | No direct internet. The preamble exports both proxy variables, so this means either `setup_env=False` or a tool that ignores `http_proxy` |
 | Either of the above, with `setup_env=False` | You opted out of the preamble; the job has to set up its own environment |

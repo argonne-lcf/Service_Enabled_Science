@@ -24,8 +24,9 @@ stages in order rather than improvising a shorter path.
 
 ## `commands` is the work only
 
-`submit_job` prepends the HTTP/HTTPS proxy and the pinned conda module itself —
-see `job_preamble()` in [`alcf_tools/common.py`](alcf_tools/common.py). Write
+`submit_job` prepends the HTTP/HTTPS proxy, the pinned conda module, and the
+`source` + `conda activate base` that puts `python` on `PATH` — see
+`job_preamble()` in [`alcf_tools/common.py`](alcf_tools/common.py). Write
 `commands="python train.py"`, not a block that re-exports the proxy. Pass
 `setup_env=False` only when the user has asked for a different environment.
 

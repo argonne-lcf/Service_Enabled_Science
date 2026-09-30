@@ -57,6 +57,12 @@ PROXY = "http://proxy.alcf.anl.gov:3128"
 # the default that week, so an unpinned preamble silently changes the Python
 # under every attendee's job mid-workshop.
 CONDA_MODULE = "conda/2026-10-01"
+# Where that module's install tree lives, in ALCF's layout. Derived from
+# CONDA_MODULE rather than written out a second time: when these were two
+# independent constants, bumping one and not the other produced a preamble that
+# loaded one version and sourced another. This is only the *fallback* -- the
+# preamble prefers the path the loaded module actually reports.
+CONDA_ROOT = f"/soft/applications/conda/{CONDA_MODULE.split('/', 1)[-1]}/mconda3"
 
 
 def job_preamble() -> str:
@@ -75,14 +81,29 @@ def job_preamble() -> str:
       on the default MODULEPATH; without this line the load simply reports the
       module as unknown.
 
-    * `module load <pinned version>`, and nothing after it. This assumes the
-      module leaves you in its base environment. Older Polaris recipes follow
-      the load with `source .../profile.d/conda.sh && conda activate base`,
-      because `conda activate` is a shell function from `conda init` rather
-      than a binary -- a bare `conda activate` works on an account that has run
-      `conda init` and is a silent no-op on one that has not. If a job comes
-      back running the system Python and dying on an import, that source line
-      is what is missing; add it here rather than in anyone's `commands`.
+    * `module load <pinned version> || true`. Lmod on Polaris returns non-zero
+      when a module declares a prerequisite that no longer exists, which both
+      recent conda modules do. The `|| true` keeps that from being fatal under
+      a `set -e` the user may have written into `commands`.
+
+    * `source .../profile.d/conda.sh`, then `conda activate base`. The module
+      load on its own does NOT put python on PATH -- a job that skips this
+      dies with a bare `/bin/bash: python: command not found`, minutes later,
+      looking like a broken script rather than a broken environment. This is
+      the whole reason the block exists, and it was briefly dropped on the
+      assumption that the module left you in its base environment; it does
+      not. `conda activate` is a shell function that `conda init` writes into
+      an interactive profile, not a binary, so without sourcing that script it
+      is a silent no-op on any account that has not run `conda init`.
+
+      The path is resolved from the module that actually loaded, by asking the
+      `conda` on PATH where its base is, and only falls back to CONDA_ROOT if
+      that fails. A hard-coded path is a second thing to keep in sync with the
+      pinned version, and gets it wrong exactly when the version is bumped.
+
+    * A last check that `python` resolves. If it does not, the preamble says so
+      on stderr, naming both candidate causes, instead of letting the job fail
+      later with three words that point at the wrong layer.
 
     Failures here are deliberately non-fatal: nothing in this block is required
     by a job that does no networking and no Python, and it should not be able
@@ -92,8 +113,29 @@ def job_preamble() -> str:
     return (
         f"export http_proxy={PROXY}\n"
         f"export https_proxy={PROXY}\n"
-        "module use /soft/modulefiles\n"
-        f"module load {CONDA_MODULE}\n"
+        "module use /soft/modulefiles || true\n"
+        f"module load {CONDA_MODULE} || true\n"
+        # Ask the conda that the module put on PATH where its base is, rather
+        # than assuming the layout. The trailing `|| true` is load-bearing: an
+        # assignment takes the exit status of its command substitution, so
+        # under an inherited `set -e` this line -- not the guarded ones below
+        # -- is what kills the job, before it reaches its own first command.
+        '_ses_conda_base="$(command -v conda >/dev/null 2>&1'
+        ' && conda info --base 2>/dev/null)" || true\n'
+        f'[ -n "$_ses_conda_base" ] || _ses_conda_base="{CONDA_ROOT}"\n'
+        # `|| true` for the same reason as the module load: this line returns
+        # non-zero when conda is absent, and a `set -e` inherited from a login
+        # profile would turn that into a job that dies before its own first
+        # command with no output at all.
+        '[ -r "$_ses_conda_base/etc/profile.d/conda.sh" ]'
+        ' && . "$_ses_conda_base/etc/profile.d/conda.sh"'
+        ' && conda activate base || true\n'
+        'command -v python >/dev/null 2>&1 || {\n'
+        f'  echo "preamble: python is not on PATH after loading {CONDA_MODULE}." >&2\n'
+        '  echo "preamble: tried $_ses_conda_base/etc/profile.d/conda.sh" >&2\n'
+        f'  echo "preamble: check \'module avail conda\' on a login node --'
+        f' {CONDA_MODULE} may not exist." >&2\n'
+        '}\n'
     )
 
 
