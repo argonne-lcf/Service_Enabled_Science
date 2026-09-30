@@ -1,11 +1,23 @@
 # Working in this directory
 
-Read alongside [`README.md`](README.md); this file is only the things an agent
-gets wrong unprompted. Anything explained at length there is not repeated here.
+This file is self-contained. Everything needed to work here is in it, in
+[`skills/submit-job/SKILL.md`](skills/submit-job/SKILL.md), and in the tool
+docstrings themselves.
 
-## Call the tools, do not import them
+`README.md` is **not** required reading. It is the tutorial narrative, written
+for a person following along: a thousand lines of setup, rationale and worked
+examples. Reading it to answer an operational question costs far more context
+than it returns, and the parts that matter to you are restated here. Point a
+human at it; do not load it yourself.
 
-There is one MCP server, `alcf-mcp`, with eleven tools. Call them as tools.
+## The eleven tools — call them, do not import them
+
+One MCP server, `alcf-mcp`.
+
+- **Docs** — `retrieve_alcf_docs`
+- **Globus** — `local_endpoint`, `globus_ls`, `stage_to_alcf`, `transfer_status`
+- **IRI** — `get_system_status`, `submit_job`, `get_job_state`, `list_jobs`,
+  `cancel_job`, `read_file`
 
 Do **not** reach for Bash to do the same job — `python -c "from alcf_mcp import
 get_job_state, read_file, ..."` runs the same code with none of the guardrails,
