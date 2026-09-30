@@ -68,6 +68,8 @@ being missing.
 | [`mnist_pytorch.py`](mnist_pytorch.py) | The training script for Example 3 |
 | [`.mcp.json`](.mcp.json) | The server, pre-registered for Claude Code |
 | [`opencode.jsonc`](opencode.jsonc) | The same server, for opencode |
+| [`AGENTS.md`](AGENTS.md) | Always-loaded rules for whichever agent you run here |
+| [`CLAUDE.md`](CLAUDE.md) | Imports `AGENTS.md`, so Claude Code and opencode cannot drift |
 
 ---
 
@@ -145,72 +147,79 @@ during: it involves a browser login.
 
 ### Set up a Globus personal endpoint
 
-All of this is doable from the shell — no web console, and with
-`--no-local-server`, no browser on the machine you are setting up. That matters
-if your "laptop" for this session is a login node you reached over SSH.
+Three commands on Linux. On macOS and Windows, GCP ships as a GUI application
+that does the same three steps itself. All three builds come from the same base
+URL, `https://downloads.globus.org/globus-connect-personal/<os>/stable/`:
 
-**1. Authenticate the CLI.** This is separate from `alcf-tokens`: the `globus`
-CLI keeps its own tokens.
+| OS | File | How you set it up |
+|---|---|---|
+| Linux | [`.tgz`](https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz) (132 MB) | run `./globusconnectpersonal`; text prompts if there is no display |
+| macOS | [`.dmg`](https://downloads.globus.org/globus-connect-personal/mac/stable/globusconnectpersonal-latest.dmg) (57 MB) | drag to Applications, launch, click **Log In** |
+| Windows | [`.exe`](https://downloads.globus.org/globus-connect-personal/windows/stable/globusconnectpersonal-latest.exe) (84 MB) | run the installer; GCP launches, click **Log In** |
 
-```bash
-globus login --no-local-server    # prints a URL; paste the code back
-```
-
-**2. Register the collection.** This talks to the Globus service and prints a
-single-use **setup key**. It installs nothing:
+**1. Download and unpack.**
 
 ```bash
-globus gcp create mapped "$USER-laptop"
-```
-
-**3. Install and start GCP.** Download it — Linux shown; macOS
-([`.dmg`](https://downloads.globus.org/globus-connect-personal/mac/stable/globusconnectpersonal-latest.dmg))
-and Windows
-([`.exe`](https://downloads.globus.org/globus-connect-personal/windows/stable/globusconnectpersonal-latest.exe))
-are the same two flags once installed:
-
-```bash
-curl -LO https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz
+GCP=https://downloads.globus.org/globus-connect-personal/linux/stable
+wget $GCP/globusconnectpersonal-latest.tgz    # 132 MB
 tar xzf globusconnectpersonal-latest.tgz && cd globusconnectpersonal-*/
-./globusconnectpersonal -setup <setup-key>
-./globusconnectpersonal -start -restrict-paths rw~/ses-staging &
+```
+
+**2. Run the guided setup.** The first launch *is* setup, not the application:
+
+```bash
+./globusconnectpersonal        # prompts for login, then a collection name
+```
+
+It prints a URL, takes an auth code back, and asks what to call the collection.
+There is no separate `globus login` and no setup key to paste — GCP does its
+own registration. (`globus gcp create mapped` is an alternative that *produces*
+a setup key for `-setup <key>`; it exists for scripted installs, and you do not
+need it here.)
+
+**3. Start it.**
+
+```bash
+./globusconnectpersonal -start &
 ```
 
 GCP has to be **running** for a transfer to move anything — a registered but
-stopped endpoint makes the transfer fail, not wait. (`-restrict-paths` is
-explained [below](#what-your-endpoint-exposes-is-a-guardrail); use it from the
-first start rather than adding it later.)
+stopped endpoint makes the transfer fail, not wait. On macOS and Windows it is
+a menu-bar / tray application, so launching it is starting it. Everything after
+this — the test below, and every tool call in the session — is identical on all
+three.
 
 ### Test it before you trust it
 
 Registered, installed and started are three different things, and each can
-succeed while the next has not. One command checks all three at once — plus
-that the path you restricted to is actually published:
+succeed while the next has not:
 
 ```bash
-mkdir -p ~/ses-staging && touch ~/ses-staging/hello.txt
-globus ls "$(globus endpoint local-id):/~/ses-staging"
+./globusconnectpersonal -status
 ```
 
 ```
-hello.txt
+Globus Online: connected
 ```
 
-If you see `hello.txt`, the endpoint is registered with Globus, the daemon is
-running, your consents are good, and the directory is published. Anything else
-maps to a row in [Troubleshooting](#troubleshooting):
+`connected` means the endpoint is registered *and* the local process is
+reaching the Globus service. Anything else maps to a row in
+[Troubleshooting](#troubleshooting):
 
 | What you get | What it means |
 |---|---|
-| `globus endpoint local-id` prints nothing | Step 3's `-setup` never completed |
-| A permission error, or an empty listing | GCP is running with different `-restrict-paths` |
-| A "not found" error | The path is wrong, or GCP publishes a different root |
-| It hangs, then times out | GCP is registered but **stopped** — `./globusconnectpersonal -start &` |
-| A consent error | Run `globus login --no-local-server` again |
+| `Globus Online: disconnected` | The process is up but cannot reach Globus — check egress or proxy |
+| Nothing, or a "not set up" message | The guided setup in step 2 never completed |
+| `command not found` | You are not inside the unpacked `globusconnectpersonal-*/` directory |
 
-If you want the two halves separately, `./globusconnectpersonal -status`
-reports the daemon and `globus endpoint local-id` reports the UUID — but the
-`globus ls` above is the only one that proves the whole path end to end.
+That checks the endpoint, not any particular directory. If you want an
+end-to-end check that a path is actually published, authenticate the `globus`
+CLI once — it keeps its own tokens, separate from `alcf-tokens` — and list it:
+
+```bash
+globus login --no-local-server                  # prints a URL; paste the code
+globus ls "$(globus endpoint local-id):/~/"
+```
 
 **Do not write that UUID down.** The `local_endpoint` tool resolves it the same
 way `globus endpoint local-id` does — by reading
@@ -227,13 +236,34 @@ command is idempotent — run it now:
 alcf-tokens login --authorize-transfer home --authorize-transfer eagle
 ```
 
+### Make somewhere to put the files
+
+The endpoint is one half of a transfer; the other half is a destination that
+exists. `/eagle/alcf_training/` is the workshop project directory, but your
+personal subdirectory under it is not created for you, and a transfer into a
+path that does not exist fails at delivery rather than at submission — minutes
+later, in a Globus task error rather than in your terminal. Create it once:
+
+```bash
+ssh <you>@polaris.alcf.anl.gov 'mkdir -p /eagle/alcf_training/$USER'
+```
+
+Single quotes matter: `$USER` has to expand on Polaris, not on your laptop,
+where it is very likely a different name. This is the only time in the session
+you log into Polaris by hand — everything after it goes through the agent.
+
 ### What your endpoint exposes is a guardrail
 
 Started bare — `./globusconnectpersonal -start &`, with no other flag — GCP
-shares your **entire home directory, read-write**. That is why the start
-command above carries `-restrict-paths rw~/ses-staging`: it narrows the share
-to one directory, and it is the reason the test lists
-`/~/ses-staging` rather than `/~/`.
+shares your **entire home directory, read-write**. That is the default, and it
+is what the three commands above leave you with. Know it rather than discover
+it.
+
+To narrow the share, put one path per line in
+`~/.globusonline/lta/config-paths` with its read/write flags and restart GCP;
+`./globusconnectpersonal -start -restrict-paths rw~/ses-staging &` does the
+same thing from the command line. Worth doing on a machine that holds anything
+you would not hand to a transfer service.
 
 Set it deliberately, because it is [the next
 section's](#what-mcp-actually-buys-you) argument one layer down: the agent
@@ -424,7 +454,7 @@ These wrap the same Session-01 REST calls you made by hand.
 | Tool | What it does |
 |---|---|
 | `get_system_status` | Polaris / Crux up? Current reservations |
-| `submit_job` | Submit a PBS job via IRI, return its ID |
+| `submit_job` | Submit a PBS job via IRI, return its ID. Prepends the proxy + conda preamble unless `setup_env=False` |
 | `get_job_state` | Poll one job |
 | `list_jobs` | Filter by state, queue, owner; `historical=True` for finished jobs |
 | `cancel_job` | Stop a run |
@@ -652,8 +682,9 @@ tell you that."
 The smallest job that proves the whole chain works.
 
 ```
-> Run a 2-node smoke test on Polaris under alcf_training that prints the
-> hostname of every node, then show me the output when it lands.
+> Run a 2-node smoke test on Polaris under alcf_training, in reservation
+> R7645913, that prints the hostname of every node, then show me the output
+> when it lands.
 ```
 
 The chain it runs:
@@ -661,12 +692,26 @@ The chain it runs:
 ```python
 submit_job(system="polaris", nodes=2,
            commands="mpiexec -n 2 --ppn 1 hostname",
-           queue="debug", account="alcf_training",
+           queue="R7645913",              # the workshop reservation
+           account="alcf_training",
            walltime_sec=600,
            stdout_path="/home/<you>/smoke.out")
 get_job_state(system="polaris", job_id=...)   # poll
 read_file(path="/home/<you>/smoke.out")
 ```
+
+**On how short `commands` is.** It is the work and nothing else. ALCF compute
+nodes have no direct route off-site and `python` needs conda brought up, but
+neither of those belongs in a prompt: `submit_job` prepends both before the
+job goes out — see [`job_preamble()`](alcf_tools/common.py), and
+[Example 3](#example-3--train-mnist-on-polaris) for what it contains and why.
+`hostname` needs none of it; the point is that you get the same environment
+whether or not the agent thought to ask for one.
+
+**On the reservation.** In PBS a reservation *is* a queue name, so `R7645913`
+goes in `queue=` — there is no separate flag for it. During the workshop this
+is what gets your job onto a node without waiting behind the general queue.
+Outside the reservation window it will not run; fall back to `queue="debug"`.
 
 No script to stage — the commands travel in the job spec. And plain `hostname`
 prints the head node *once*: two nodes allocated is not two nodes used.
@@ -712,8 +757,8 @@ The first example where the file does not already exist at ALCF. One prompt,
 all three tool groups.
 
 ```
-> Stage mnist_pytorch.py to my eagle space, train it on one Polaris node,
-> and tell me the final test accuracy.
+> Stage mnist_pytorch.py to my eagle space, train on one Polaris node in
+> reservation R7645913, and report the test accuracy.
 ```
 
 The chain it runs:
@@ -724,38 +769,67 @@ stage_to_alcf(
   alcf_path="/eagle/alcf_training/<you>/")
 transfer_status(task_id=...)      # poll to SUCCEEDED before submitting
 submit_job(system="polaris", nodes=1,
-           commands=JOB, walltime_sec=1800,
+           commands="python /eagle/alcf_training/<you>/mnist_pytorch.py",
+           walltime_sec=1800,
+           queue="R7645913",      # the workshop reservation
            stdout_path="/eagle/alcf_training/<you>/mnist.out")
 get_job_state(...)                # poll to completion
 read_file("/eagle/alcf_training/<you>/mnist.out")
 ```
 
+At 30 minutes of walltime this is the longest job in the session, so it is the
+one that most needs the reservation — see
+[Example 2](#example-2--a-two-node-smoke-test) for why `R7645913` goes in
+`queue=` rather than a flag of its own. Outside the window, `queue="debug"`.
+
 [`mnist_pytorch.py`](mnist_pytorch.py) is a plain single-GPU PyTorch script —
-three epochs by default, well inside the 30-minute walltime ceiling. The
-interesting part is `JOB`, the command block, which is the part everyone gets
-wrong:
+three epochs by default, well inside the 30-minute walltime ceiling.
+
+Notice how little `commands` contains. The interesting part is the block you
+*don't* write: `submit_job` prepends this to every job, from
+[`job_preamble()`](alcf_tools/common.py):
 
 ```bash
-CONDA=/soft/applications/conda/2025-09-28
+export http_proxy=http://proxy.alcf.anl.gov:3128
+export https_proxy=http://proxy.alcf.anl.gov:3128
 module use /soft/modulefiles
 module load conda/2025-09-28 || true
-source $CONDA/mconda3/etc/profile.d/conda.sh
-conda activate
-export http_proxy=http://proxy.alcf.anl.gov:3128
-export https_proxy=$http_proxy
-cd /eagle/alcf_training/<you>
-python mnist_pytorch.py
+source /soft/applications/conda/2025-09-28/mconda3/etc/profile.d/conda.sh \
+  && conda activate base
 ```
 
-Three real traps in nine lines:
+Three real traps in six lines, and the reason they are in the *server* rather
+than in the skill: a prompt that has to be remembered is a prompt that will
+eventually be forgotten, and each of these fails quietly rather than loudly.
 
 - **`module load` returns non-zero** often enough that `set -e` will kill the
   job before anything runs. Hence the `|| true`.
-- **`conda activate` does nothing** in a non-interactive shell unless you
-  source `profile.d/conda.sh` first — it is a shell function, not a binary.
-  Without it the job runs under the system Python and dies on `import torch`.
+- **`conda activate` may do nothing**, silently. It is a shell function
+  injected by `conda init`, not a binary. `submit_job` does run your commands
+  under `/bin/bash -lc`, so `~/.bash_profile` is sourced and the function
+  exists *if you have ever run `conda init`* — which is exactly what makes this
+  trap so hard to catch. It works on the account of whoever wrote the job and
+  is a no-op on everyone else's, with no error either way: the job runs under
+  the system Python and dies later on `import torch`. Sourcing
+  `profile.d/conda.sh` defines the function unconditionally.
 - **Compute nodes have no direct internet.** The first run downloads MNIST, and
   that hangs forever without the proxy export.
+
+Since `commands` is a string passed to `bash -lc`, there is no script file and
+no shebang: a `#!/bin/bash -l` line would just be a comment. You already have
+the login shell — which is exactly what makes the conda trap above so slippery.
+
+Nothing in the preamble is fatal if it fails. A job that needs neither Python
+nor the network should not die because `/soft` moved, so `module load` carries
+`|| true` and the `conda activate` hangs off `&&`. The cost is that a broken
+conda is reported in **stderr** and the job keeps going under the system
+Python, so read the stderr file, not just stdout, when a run comes back with an
+import error.
+
+If you want a different environment — your own conda env, a container, a
+different module set — pass `setup_env=False` and set it up yourself. That is
+the supported way out; editing `commands` to re-export the proxy is not,
+because it leaves two copies to keep in step.
 
 **What you are grading is the verify step.** A correct run calls
 `stage_to_alcf`, polls `transfer_status` until `SUCCEEDED`, and only then
@@ -832,15 +906,15 @@ how you adopt a shared service without accepting it exactly as shipped.
 | `alcf-iri` fails to start, or times out | Either you never ran `./setup.sh`, or you launched the agent from another directory so `../.venv/bin/python` did not resolve. Run setup, `cd` here, relaunch. |
 | `alcf-iri` starts, `retrieve_alcf_docs` works, every other tool 401s | Inference and IRI are separate tokens. Run `alcf-tokens test-token iri`. |
 | `retrieve_alcf_docs` 403s | Cloudflare is rejecting your network's TLS fingerprint. The tool already goes out over Python's HTTP stack, which is the path most likely to be allowed; if it still fails, you are behind a proxy that re-terminates TLS. |
-| `globus endpoint local-id` prints nothing or errors | GCP setup never completed — `~/.globusonline/lta/client-id.txt` is missing. Re-run `./globusconnectpersonal -setup <setup-key>`. |
+| `globus endpoint local-id` prints nothing or errors | GCP setup never completed — `~/.globusonline/lta/client-id.txt` is missing. Re-run `./globusconnectpersonal` and complete the guided setup. |
 | UUID resolves, but transfers fail immediately | The endpoint is registered and **stopped**. `./globusconnectpersonal -status` should say `connected`; if not, `./globusconnectpersonal -start &`. |
 | Transfer fails with a consent or permission error | Missing `data_access` consent on the ALCF side. Re-run `alcf-tokens login --authorize-transfer home --authorize-transfer eagle`. |
-| Transfer succeeds but the file is not where you expected | GCP paths are relative to what the endpoint publishes, not your shell's `cwd`. Check your `-restrict-paths` value. |
+| Transfer succeeds but the file is not where you expected | GCP paths are relative to what the endpoint publishes, not your shell's `cwd`. By default that is your whole home directory; check `~/.globusonline/lta/config-paths` if you narrowed it. |
 | `stage_to_alcf` returns a task ID, then the job finds no input files | The transfer had not finished. The tool returns when Globus *accepts* the task, not when bytes land — the agent must poll `transfer_status` to `SUCCEEDED` first. This is the failure [Example 3](#example-3--train-mnist-on-polaris) is built around. |
 | A staging tool raises a long "Globus needs an additional consent" message | Exactly what it says: run the `alcf-tokens login --authorize-transfer …` line in the error. The tool prints the scopes Globus asked for, so paste them into a support question if the login does not clear it. |
 | `local_endpoint` raises but `./globusconnectpersonal -status` says connected | The agent's server is running as a different user, or with a different `$HOME`, than the GCP install. Both read `~/.globusonline/lta/client-id.txt`. |
 | GCP will not install on ARM Linux | Globus ships no `aarch64` Linux build; the tarball is x86-64 only and needs emulation plus a 64-bit loader. Apple Silicon is fine — the macOS build handles it. |
-| The job dies immediately with a `conda` or `import torch` error | `conda activate` needs `profile.d/conda.sh` sourced first — see [Example 3](#example-3--train-mnist-on-polaris). |
+| The job dies with a `conda` or `import torch` error | The preamble's conda step failed and was non-fatal by design, so the job ran under the system Python. The reason is in **stderr**, not stdout — read the `.err` file beside `stdout_path`. If you passed `setup_env=False`, there was no preamble at all. |
 | Tools are listed but never called | Your model is not tool-capable. Check with `/model` (`/models` on opencode) and pick one the Inference Service advertises tool support for. |
 
 ## Where this goes

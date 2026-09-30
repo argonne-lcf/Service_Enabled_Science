@@ -21,6 +21,7 @@ from .common import (
     _filesystem_id,
     _headers,
     _resource_id,
+    job_preamble,
 )
 
 mcp = FastMCP("alcf-iri-compute")
@@ -51,13 +52,22 @@ def submit_job(
     queue: str = "debug",
     account: str = "alcf_training",
     walltime_sec: int = 600,
+    setup_env: bool = True,
 ) -> dict:
     """Submit a PBS job and return its job ID.
 
-    `commands` is run under `bash -lc` on the compute node. `stdout_path` must
-    be an absolute path under /home/ or /eagle/ that you can write to.
-    Refuses accounts outside the workshop allocation, more than 2 nodes, or
-    walltimes over 30 minutes -- ask a human to lift those limits.
+    `commands` is run under `bash -lc` on the compute node. Write it as if the
+    environment is already set up, because it is: the HTTP/HTTPS proxy the
+    compute nodes need for any download, and the conda activation needed for
+    any `python`, are prepended for you. Do not restate them -- and do not omit
+    them on the theory that the job does no networking, because you are not
+    the one adding them. Pass `setup_env=False` only when the user wants a
+    different environment and has said so; the job then gets no proxy and no
+    conda, and must arrange both itself.
+
+    `stdout_path` must be an absolute path under /home/ or /eagle/ that you can
+    write to. Refuses accounts outside the workshop allocation, more than 2
+    nodes, or walltimes over 30 minutes -- ask a human to lift those limits.
     """
     if account not in ALLOWED_ACCOUNTS:
         raise ValueError(f"Account {account!r} is not allowed here. Use alcf_training.")
@@ -66,6 +76,8 @@ def submit_job(
     if walltime_sec > MAX_WALLTIME_SEC:
         raise ValueError(f"Walltime exceeds the {MAX_WALLTIME_SEC}s workshop limit.")
     _filesystem_id(stdout_path)  # raises if the path is somewhere we can't write
+    if setup_env:
+        commands = job_preamble() + commands
     stderr_path = (
         stdout_path[: -len(".out")] + ".err"
         if stdout_path.endswith(".out")

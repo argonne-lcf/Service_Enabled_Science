@@ -41,6 +41,53 @@ MAX_WALLTIME_SEC = 30 * 60
 MAX_STAGE_FILES = 500
 MAX_STAGE_BYTES = 1024**3
 
+# --- Compute-node environment -----------------------------------------------
+# Two things every Polaris job needs, and neither is discoverable from the node
+# itself. Prompting an agent to remember them works most of the time, which is
+# the worst failure rate available: the times it forgets look like a bug in the
+# user's script. So `submit_job` prepends them, the same way the limits above
+# are enforced instead of requested.
+PROXY = "http://proxy.alcf.anl.gov:3128"
+CONDA_MODULE = "conda/2025-09-28"
+CONDA_ROOT = "/soft/applications/conda/2025-09-28"
+
+
+def job_preamble() -> str:
+    """Shell lines prepended to every `submit_job` command block.
+
+    Line by line, because each one is load-bearing:
+
+    * Both proxy variables, with the literal value twice. Compute nodes have no
+      direct route off-site, so an unproxied download hangs until walltime with
+      no error. Writing it as `export http_proxy=... https_proxy=$http_proxy`
+      on one line is a real bug and not a style choice -- bash expands every
+      right-hand side before it assigns any of them, so `https_proxy` would get
+      whatever `http_proxy` held *before* the line ran, i.e. nothing.
+
+    * `module load ... || true`. Lmod emits warnings on a non-zero exit often
+      enough that a job with `set -e` dies on this line with a bare `exit 1`.
+
+    * `source .../profile.d/conda.sh` before activating. `conda activate` is a
+      shell function defined by `conda init`, not a binary. Jobs do run under
+      `bash -lc`, so on an account that has run `conda init` the function
+      arrives via ~/.bash_profile and a bare `conda activate` appears to work
+      -- while on an account that has not, it is a silent no-op that leaves the
+      system Python in place and fails much later on an import. Sourcing the
+      profile script explicitly makes both accounts behave the same.
+
+    Failures here are deliberately non-fatal: nothing in this block is required
+    by a job that does no networking and no Python, and it should not be able
+    to take one down. Errors land in the job's stderr rather than being
+    swallowed, so a genuinely broken conda is still visible.
+    """
+    return (
+        f"export http_proxy={PROXY}\n"
+        f"export https_proxy={PROXY}\n"
+        "module use /soft/modulefiles\n"
+        f"module load {CONDA_MODULE} || true\n"
+        f"source {CONDA_ROOT}/mconda3/etc/profile.d/conda.sh && conda activate base\n"
+    )
+
 
 def _headers() -> dict:
     """A fresh Bearer token on every call -- alcf-tokens handles the refresh."""
