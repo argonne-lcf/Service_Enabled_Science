@@ -16,7 +16,13 @@ and still has to be cleaned up.
 ## 2. Stage it with Globus
 
 Call `stage_to_alcf(local_path, alcf_path)`. Eagle writes must land under
-`/eagle/<project>/`; for the workshop that project is `alcf_training`.
+`/eagle/<project>/<user>/`; for the workshop that project is `alcf_training`.
+Give the full destination path, filename included —
+`/eagle/alcf_training/<user>/train.py`, not the directory. The server rejects
+anything shallower, including a bare `/eagle/alcf_training/`, because the
+project directory is shared and group writable. If you do not know the
+username, ask for it rather than guessing; it is frequently not the same as
+the local one.
 
 Then poll `transfer_status(task_id)` until it reports `SUCCEEDED`. **A task ID
 is not a delivery.** If you submit before the transfer lands, the job runs
@@ -30,12 +36,47 @@ Call `get_system_status(system)` first. If the system is down, say so and stop.
 Then `submit_job`. Its signature is:
 
 ```python
-submit_job(system, commands, stdout_path,
-           nodes=1, queue="debug", account="alcf_training", walltime_sec=600)
+submit_job(system, commands, stdout_path, nodes=1, queue="debug",
+           account="alcf_training", walltime_sec=600, setup_env=True)
 ```
 
 `stdout_path` is required and must be an absolute path under `/home/` or
 `/eagle/` that you can write to. Ask for the username if you do not know it.
+
+`commands` is a shell string, not a script file — the tool runs it as
+`/bin/bash -lc "<commands>"`. Do not write a `#!/bin/bash -l` shebang; there is
+no file for it to be the first line of, so it would just be a comment.
+
+**The environment is already set up. Write `commands` as the work only.**
+`setup_env=True` (the default) prepends the proxy exports, the pinned conda
+module load, and the `source` + `conda activate base` that actually puts
+`python` on `PATH`, to your command block before it is submitted — see `job_preamble()`
+in `alcf_tools/common.py` for the exact lines and why each one is there. So:
+
+```python
+commands="python train.py"          # correct — that is the whole job
+```
+
+Not this:
+
+```python
+commands="export http_proxy=...\nmodule load conda\n..."   # already done
+```
+
+Restating them is not harmful, but it is noise you then have to keep correct,
+and it is how the one-line `export http_proxy=... https_proxy=$http_proxy` bug
+gets reintroduced. Leave it to the server.
+
+Only pass `setup_env=False` if the user has asked for a different environment —
+a personal conda env, a container, a non-default module set. That job gets no
+proxy and no conda and must arrange both itself; say so when you do it.
+
+**Do not take the `queue` default on faith.** `debug` is only the fallback. If
+the user names a reservation, pass it as `queue=` — in PBS a reservation *is* a
+queue name, so there is no separate flag for it. If the request does not say
+which queue to use and the job is more than a few minutes long, ask rather than
+silently landing in `debug`, where it may sit behind everyone else or exceed
+the queue's walltime limit.
 
 Report the job ID as soon as you have it, **before** you start polling — the
 user should be able to find the job even if this session dies.
@@ -68,6 +109,10 @@ work around them — ask a human to lift them.
 | Max staged files | 500 |
 | Max staged bytes | 1 GiB |
 
+`job_preamble()` lives in the same file for the same reason. An environment
+that depends on the agent remembering it is an environment that works in
+rehearsal and fails in the room.
+
 ## Common causes of failure
 
 | Symptom | Cause |
@@ -76,9 +121,10 @@ work around them — ask a human to lift them.
 | `Permission denied` on stdout | `stdout_path` is outside `/home/` and `/eagle/` |
 | File not found on the compute node | The transfer had not finished — you skipped stage 2's poll |
 | Killed at the walltime boundary | `walltime_sec` too short; do not silently raise it |
-| `module load` aborts the job | Non-zero return from a missing prereq plus `set -e`; drop `set -e` around the module block |
-| `conda activate` does nothing | It is a shell function — source `profile.d/conda.sh` first |
-| Download hangs on the compute node | No direct internet; export `http_proxy=http://proxy.alcf.anl.gov:3128` |
+| `python: command not found` | Conda did not activate. The preamble detects this itself — read **stderr** for its `preamble:` lines, which name the `conda.sh` it tried and suggest `module avail conda`. Usually the pinned version does not exist on the system |
+| `ModuleNotFoundError` / wrong Python | Conda did not come up. Read **stderr**, not stdout — `job_preamble()` is deliberately non-fatal, so a missing module says so there and the job carries on under the system Python |
+| Download hangs on the compute node | No direct internet. The preamble exports both proxy variables, so this means either `setup_env=False` or a tool that ignores `http_proxy` |
+| Either of the above, with `setup_env=False` | You opted out of the preamble; the job has to set up its own environment |
 
 ## Multi-node
 

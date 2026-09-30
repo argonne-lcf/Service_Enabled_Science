@@ -68,6 +68,8 @@ being missing.
 | [`mnist_pytorch.py`](mnist_pytorch.py) | The training script for Example 3 |
 | [`.mcp.json`](.mcp.json) | The server, pre-registered for Claude Code |
 | [`opencode.jsonc`](opencode.jsonc) | The same server, for opencode |
+| [`AGENTS.md`](AGENTS.md) | Always-loaded rules for whichever agent you run here |
+| [`CLAUDE.md`](CLAUDE.md) | Imports `AGENTS.md`, so Claude Code and opencode cannot drift |
 
 ---
 
@@ -145,72 +147,79 @@ during: it involves a browser login.
 
 ### Set up a Globus personal endpoint
 
-All of this is doable from the shell — no web console, and with
-`--no-local-server`, no browser on the machine you are setting up. That matters
-if your "laptop" for this session is a login node you reached over SSH.
+Three commands on Linux. On macOS and Windows, GCP ships as a GUI application
+that does the same three steps itself. All three builds come from the same base
+URL, `https://downloads.globus.org/globus-connect-personal/<os>/stable/`:
 
-**1. Authenticate the CLI.** This is separate from `alcf-tokens`: the `globus`
-CLI keeps its own tokens.
+| OS | File | How you set it up |
+|---|---|---|
+| Linux | [`.tgz`](https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz) (132 MB) | run `./globusconnectpersonal`; text prompts if there is no display |
+| macOS | [`.dmg`](https://downloads.globus.org/globus-connect-personal/mac/stable/globusconnectpersonal-latest.dmg) (57 MB) | drag to Applications, launch, click **Log In** |
+| Windows | [`.exe`](https://downloads.globus.org/globus-connect-personal/windows/stable/globusconnectpersonal-latest.exe) (84 MB) | run the installer; GCP launches, click **Log In** |
 
-```bash
-globus login --no-local-server    # prints a URL; paste the code back
-```
-
-**2. Register the collection.** This talks to the Globus service and prints a
-single-use **setup key**. It installs nothing:
+**1. Download and unpack.**
 
 ```bash
-globus gcp create mapped "$USER-laptop"
-```
-
-**3. Install and start GCP.** Download it — Linux shown; macOS
-([`.dmg`](https://downloads.globus.org/globus-connect-personal/mac/stable/globusconnectpersonal-latest.dmg))
-and Windows
-([`.exe`](https://downloads.globus.org/globus-connect-personal/windows/stable/globusconnectpersonal-latest.exe))
-are the same two flags once installed:
-
-```bash
-curl -LO https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz
+GCP=https://downloads.globus.org/globus-connect-personal/linux/stable
+wget $GCP/globusconnectpersonal-latest.tgz    # 132 MB
 tar xzf globusconnectpersonal-latest.tgz && cd globusconnectpersonal-*/
-./globusconnectpersonal -setup <setup-key>
-./globusconnectpersonal -start -restrict-paths rw~/ses-staging &
+```
+
+**2. Run the guided setup.** The first launch *is* setup, not the application:
+
+```bash
+./globusconnectpersonal        # prompts for login, then a collection name
+```
+
+It prints a URL, takes an auth code back, and asks what to call the collection.
+There is no separate `globus login` and no setup key to paste — GCP does its
+own registration. (`globus gcp create mapped` is an alternative that *produces*
+a setup key for `-setup <key>`; it exists for scripted installs, and you do not
+need it here.)
+
+**3. Start it.**
+
+```bash
+./globusconnectpersonal -start &
 ```
 
 GCP has to be **running** for a transfer to move anything — a registered but
-stopped endpoint makes the transfer fail, not wait. (`-restrict-paths` is
-explained [below](#what-your-endpoint-exposes-is-a-guardrail); use it from the
-first start rather than adding it later.)
+stopped endpoint makes the transfer fail, not wait. On macOS and Windows it is
+a menu-bar / tray application, so launching it is starting it. Everything after
+this — the test below, and every tool call in the session — is identical on all
+three.
 
 ### Test it before you trust it
 
 Registered, installed and started are three different things, and each can
-succeed while the next has not. One command checks all three at once — plus
-that the path you restricted to is actually published:
+succeed while the next has not:
 
 ```bash
-mkdir -p ~/ses-staging && touch ~/ses-staging/hello.txt
-globus ls "$(globus endpoint local-id):/~/ses-staging"
+./globusconnectpersonal -status
 ```
 
 ```
-hello.txt
+Globus Online: connected
 ```
 
-If you see `hello.txt`, the endpoint is registered with Globus, the daemon is
-running, your consents are good, and the directory is published. Anything else
-maps to a row in [Troubleshooting](#troubleshooting):
+`connected` means the endpoint is registered *and* the local process is
+reaching the Globus service. Anything else maps to a row in
+[Troubleshooting](#troubleshooting):
 
 | What you get | What it means |
 |---|---|
-| `globus endpoint local-id` prints nothing | Step 3's `-setup` never completed |
-| A permission error, or an empty listing | GCP is running with different `-restrict-paths` |
-| A "not found" error | The path is wrong, or GCP publishes a different root |
-| It hangs, then times out | GCP is registered but **stopped** — `./globusconnectpersonal -start &` |
-| A consent error | Run `globus login --no-local-server` again |
+| `Globus Online: disconnected` | The process is up but cannot reach Globus — check egress or proxy |
+| Nothing, or a "not set up" message | The guided setup in step 2 never completed |
+| `command not found` | You are not inside the unpacked `globusconnectpersonal-*/` directory |
 
-If you want the two halves separately, `./globusconnectpersonal -status`
-reports the daemon and `globus endpoint local-id` reports the UUID — but the
-`globus ls` above is the only one that proves the whole path end to end.
+That checks the endpoint, not any particular directory. If you want an
+end-to-end check that a path is actually published, authenticate the `globus`
+CLI once — it keeps its own tokens, separate from `alcf-tokens` — and list it:
+
+```bash
+globus login --no-local-server                  # prints a URL; paste the code
+globus ls "$(globus endpoint local-id):/~/"
+```
 
 **Do not write that UUID down.** The `local_endpoint` tool resolves it the same
 way `globus endpoint local-id` does — by reading
@@ -227,13 +236,49 @@ command is idempotent — run it now:
 alcf-tokens login --authorize-transfer home --authorize-transfer eagle
 ```
 
+### Make somewhere to put the files
+
+The endpoint is one half of a transfer; the other half is a destination that
+exists. `/eagle/alcf_training/` is the workshop project directory, but your
+personal subdirectory under it is not created for you, and a transfer into a
+path that does not exist fails at delivery rather than at submission — minutes
+later, in a Globus task error rather than in your terminal. Create it once:
+
+```bash
+ssh <you>@polaris.alcf.anl.gov 'mkdir -p /eagle/alcf_training/$USER'
+```
+
+Single quotes matter: `$USER` has to expand on Polaris, not on your laptop,
+where it is very likely a different name. This is the only time in the session
+you log into Polaris by hand — everything after it goes through the agent.
+
+That per-user directory is not a convention you can skip. Everything staged to
+eagle has to land under `/eagle/<project>/<user>/`, and `stage_to_alcf` refuses
+anything shallower — see `_check_eagle_destination` in
+[`alcf_tools/common.py`](alcf_tools/common.py). The project directory is group
+writable, so without it a room of thirty people staging `train.py` in the same
+half hour overwrite each other, and the filesystem is perfectly happy to let
+them. Pass the full destination path including the filename
+(`…/<you>/mnist_pytorch.py`), not the directory it goes in.
+
+What that check does *not* do is confirm `<user>` is you. The server has no
+trustworthy way to know your ALCF username — it is often not your laptop
+username — and guessing wrong would block a real transfer in the middle of the
+session. It enforces the layout; the filesystem's own permissions are what
+enforce identity.
+
 ### What your endpoint exposes is a guardrail
 
 Started bare — `./globusconnectpersonal -start &`, with no other flag — GCP
-shares your **entire home directory, read-write**. That is why the start
-command above carries `-restrict-paths rw~/ses-staging`: it narrows the share
-to one directory, and it is the reason the test lists
-`/~/ses-staging` rather than `/~/`.
+shares your **entire home directory, read-write**. That is the default, and it
+is what the three commands above leave you with. Know it rather than discover
+it.
+
+To narrow the share, put one path per line in
+`~/.globusonline/lta/config-paths` with its read/write flags and restart GCP;
+`./globusconnectpersonal -start -restrict-paths rw~/ses-staging &` does the
+same thing from the command line. Worth doing on a machine that holds anything
+you would not hand to a transfer service.
 
 Set it deliberately, because it is [the next
 section's](#what-mcp-actually-buys-you) argument one layer down: the agent
@@ -258,7 +303,7 @@ three reasons:
 - **Scoped.** The server is a real boundary. `submit_job` refuses any account
   other than `alcf_training`, more than 2 nodes, and walltimes over 30 minutes;
   `stage_to_alcf` refuses more than 500 files or 1 GiB, and refuses eagle
-  writes outside `/eagle/alcf_training/`. Those are ordinary Python `raise`
+  writes outside `/eagle/<project>/<user>/`. Those are ordinary Python `raise`
   statements running before the HTTP request — the model cannot argue its way
   past them the way it can past an instruction in a prompt. They all live in
   one place, [`alcf_tools/common.py`](alcf_tools/common.py).
@@ -388,7 +433,7 @@ does the reasoning — so you can always check the citation.
 |---|---|
 | `local_endpoint` | Returns your GCP collection ID, read from `~/.globusonline/lta/client-id.txt` |
 | `globus_ls` | Lists a directory, `location="local"` or `location="alcf"` |
-| `stage_to_alcf` | Copies local → `/home/…` or `/eagle/alcf_training/…`, returns a task ID |
+| `stage_to_alcf` | Copies local → `/home/…` or `/eagle/alcf_training/<you>/…`, returns a task ID |
 | `transfer_status` | Polls that task ID until `SUCCEEDED` |
 
 The docstring on `stage_to_alcf` is doing real work:
@@ -424,7 +469,7 @@ These wrap the same Session-01 REST calls you made by hand.
 | Tool | What it does |
 |---|---|
 | `get_system_status` | Polaris / Crux up? Current reservations |
-| `submit_job` | Submit a PBS job via IRI, return its ID |
+| `submit_job` | Submit a PBS job via IRI, return its ID. Prepends the proxy + conda preamble unless `setup_env=False` |
 | `get_job_state` | Poll one job |
 | `list_jobs` | Filter by state, queue, owner; `historical=True` for finished jobs |
 | `cancel_job` | Stop a run |
@@ -460,7 +505,7 @@ Read that output carefully. It is what the model sees, and nothing else.
 
 ## Register the server with your agent
 
-`alcf_mcp.py` is already registered in both config files, as `alcf-iri`. Launch
+`alcf_mcp.py` is already registered in both config files, as `alcf-mcp`. Launch
 your agent from this directory and ask it to confirm:
 
 ```bash
@@ -475,7 +520,7 @@ You should get all eleven. A stdio server is a command plus its arguments —
 that is the whole entry:
 
 ```json
-"alcf-iri": {
+"alcf-mcp": {
   "type": "stdio",
   "command": "../.venv/bin/python",
   "args": ["alcf_mcp.py"]
@@ -538,7 +583,7 @@ name: submit-job
 description: Generate, stage over Globus, submit via IRI, monitor, report back.
 ---
 1. Generate the input locally; show it.
-2. stage_to_alcf -> /eagle/<project>/
+2. stage_to_alcf -> /eagle/<project>/<user>/
    Wait for SUCCEEDED. Never assume.
 3. get_system_status, then submit_job.
 4. Poll with backoff: 10s, then 30s.
@@ -604,7 +649,7 @@ Four things to notice:
   confidently, sometimes wrongly, and never from your config. `/model` reads
   the configuration. *Ask the system, not the model* is the same discipline
   every example below is built on.
-- **`/mcp` is the real check.** If `alcf-iri` is not listed there with its
+- **`/mcp` is the real check.** If `alcf-mcp` is not listed there with its
   eleven tools, nothing after this section will work — go to
   [Troubleshooting](#troubleshooting) before continuing.
 - **The Polaris question calls a tool.** It should be answered by
@@ -652,8 +697,9 @@ tell you that."
 The smallest job that proves the whole chain works.
 
 ```
-> Run a 2-node smoke test on Polaris under alcf_training that prints the
-> hostname of every node, then show me the output when it lands.
+> Run a 2-node smoke test on Polaris under alcf_training, in reservation
+> R7645913, that prints the hostname of every node, then show me the output
+> when it lands.
 ```
 
 The chain it runs:
@@ -661,12 +707,26 @@ The chain it runs:
 ```python
 submit_job(system="polaris", nodes=2,
            commands="mpiexec -n 2 --ppn 1 hostname",
-           queue="debug", account="alcf_training",
+           queue="R7645913",              # the workshop reservation
+           account="alcf_training",
            walltime_sec=600,
            stdout_path="/home/<you>/smoke.out")
 get_job_state(system="polaris", job_id=...)   # poll
 read_file(path="/home/<you>/smoke.out")
 ```
+
+**On how short `commands` is.** It is the work and nothing else. ALCF compute
+nodes have no direct route off-site and `python` needs conda brought up, but
+neither of those belongs in a prompt: `submit_job` prepends both before the
+job goes out — see [`job_preamble()`](alcf_tools/common.py), and
+[Example 3](#example-3--train-mnist-on-polaris) for what it contains and why.
+`hostname` needs none of it; the point is that you get the same environment
+whether or not the agent thought to ask for one.
+
+**On the reservation.** In PBS a reservation *is* a queue name, so `R7645913`
+goes in `queue=` — there is no separate flag for it. During the workshop this
+is what gets your job onto a node without waiting behind the general queue.
+Outside the reservation window it will not run; fall back to `queue="debug"`.
 
 No script to stage — the commands travel in the job spec. And plain `hostname`
 prints the head node *once*: two nodes allocated is not two nodes used.
@@ -712,8 +772,8 @@ The first example where the file does not already exist at ALCF. One prompt,
 all three tool groups.
 
 ```
-> Stage mnist_pytorch.py to my eagle space, train it on one Polaris node,
-> and tell me the final test accuracy.
+> Stage mnist_pytorch.py to my eagle space, train on one Polaris node in
+> reservation R7645913, and report the test accuracy.
 ```
 
 The chain it runs:
@@ -721,41 +781,105 @@ The chain it runs:
 ```python
 stage_to_alcf(
   local_path="~/mnist_pytorch.py",
-  alcf_path="/eagle/alcf_training/<you>/")
+  alcf_path="/eagle/alcf_training/<you>/mnist_pytorch.py")
 transfer_status(task_id=...)      # poll to SUCCEEDED before submitting
 submit_job(system="polaris", nodes=1,
-           commands=JOB, walltime_sec=1800,
+           commands="python /eagle/alcf_training/<you>/mnist_pytorch.py",
+           walltime_sec=1800,
+           queue="R7645913",      # the workshop reservation
            stdout_path="/eagle/alcf_training/<you>/mnist.out")
 get_job_state(...)                # poll to completion
 read_file("/eagle/alcf_training/<you>/mnist.out")
 ```
 
+At 30 minutes of walltime this is the longest job in the session, so it is the
+one that most needs the reservation — see
+[Example 2](#example-2--a-two-node-smoke-test) for why `R7645913` goes in
+`queue=` rather than a flag of its own. Outside the window, `queue="debug"`.
+
 [`mnist_pytorch.py`](mnist_pytorch.py) is a plain single-GPU PyTorch script —
-three epochs by default, well inside the 30-minute walltime ceiling. The
-interesting part is `JOB`, the command block, which is the part everyone gets
-wrong:
+three epochs by default, well inside the 30-minute walltime ceiling.
+
+Notice how little `commands` contains. The interesting part is the block you
+*don't* write: `submit_job` prepends this to every job, from
+[`job_preamble()`](alcf_tools/common.py):
 
 ```bash
-CONDA=/soft/applications/conda/2025-09-28
-module use /soft/modulefiles
-module load conda/2025-09-28 || true
-source $CONDA/mconda3/etc/profile.d/conda.sh
-conda activate
 export http_proxy=http://proxy.alcf.anl.gov:3128
-export https_proxy=$http_proxy
-cd /eagle/alcf_training/<you>
-python mnist_pytorch.py
+export https_proxy=http://proxy.alcf.anl.gov:3128
+module use /soft/modulefiles || true
+module load conda/2026-10-01 || true
+_ses_conda_base="$(command -v conda >/dev/null 2>&1 && conda info --base 2>/dev/null)" || true
+[ -n "$_ses_conda_base" ] || _ses_conda_base="/soft/applications/conda/2026-10-01/mconda3"
+[ -r "$_ses_conda_base/etc/profile.d/conda.sh" ] \
+  && . "$_ses_conda_base/etc/profile.d/conda.sh" && conda activate base || true
+command -v python >/dev/null 2>&1 || {
+  echo "preamble: python is not on PATH after loading conda/2026-10-01." >&2
+  ...
+}
 ```
 
-Three real traps in nine lines:
+Every line exists because of something that fails *quietly*. That is also the
+reason they live in the *server* rather than in the skill: a prompt that has to
+be remembered is a prompt that will eventually be forgotten.
 
-- **`module load` returns non-zero** often enough that `set -e` will kill the
-  job before anything runs. Hence the `|| true`.
-- **`conda activate` does nothing** in a non-interactive shell unless you
-  source `profile.d/conda.sh` first — it is a shell function, not a binary.
-  Without it the job runs under the system Python and dies on `import torch`.
 - **Compute nodes have no direct internet.** The first run downloads MNIST, and
-  that hangs forever without the proxy export.
+  that hangs until the walltime kills it — no error, no output — without the
+  proxy exports. Note the literal value twice: writing
+  `export http_proxy=... https_proxy=$http_proxy` on one line is a real bug,
+  because bash expands every right-hand side before it assigns any of them.
+- **The conda modules are not on the default `MODULEPATH`.** Without
+  `module use /soft/modulefiles`, the load just reports an unknown module.
+- **The version is pinned.** Bare `module load conda` resolves to whatever ALCF
+  has made the default that week, which is not something you want changing
+  under a room full of people midway through a workshop.
+
+- **The module load does not put `python` on `PATH`.** This is the one that
+  bites. `module load conda/...` on its own leaves you with no `python` at all,
+  and the job dies at its first line with `/bin/bash: python: command not
+  found` — three words, minutes later, in PBS stderr, pointing at your script
+  instead of at the environment. You have to source conda's `profile.d` script
+  and then `conda activate base`. `conda activate` is a shell *function* that
+  `conda init` writes into an interactive profile, not a binary, so without
+  that `source` it is a silent no-op on any account that has never run `conda
+  init` — a nasty way for the presenter's laptop to differ from yours.
+- **The base path is resolved, not hard-coded.** The preamble asks the `conda`
+  that the module actually put on `PATH` where its base is, and only falls back
+  to `/soft/applications/conda/<version>/mconda3` if that fails. A written-out
+  path is a second thing to keep in step with the pinned version, and it goes
+  stale exactly when the version is bumped.
+- **Every line is `|| true`, and that is deliberate.** None of this is needed
+  by a job that does no networking and no Python, so none of it should be able
+  to kill one. The subtle case is the `_ses_conda_base=` assignment: a variable
+  assignment takes the exit status of its command substitution, so under a
+  `set -e` inherited from a login profile *that* line — not the guarded ones
+  after it — is what would kill the job before it reached its own first
+  command.
+- **If it still fails, the preamble says so itself.** The closing `command -v
+  python` check prints which `conda.sh` it tried and suggests `module avail
+  conda`, so a wrong pin reports itself at the top of stderr rather than as a
+  missing interpreter further down.
+
+This block was briefly shortened to just the `module load`, on the assumption
+that the module leaves you in its base environment. It does not, and the
+symptom was exactly the `python: command not found` above. The assumption is
+recorded here because the failure is silent in both directions: the shortened
+version looks correct, and Trinity's own Polaris notes had already written the
+fix down under `conda-activate-requires-source`.
+
+Since `commands` is a string passed to `bash -lc`, there is no script file and
+no shebang: a `#!/bin/bash -l` line would just be a comment.
+
+Nothing in the preamble is fatal if it fails. A job that needs neither Python
+nor the network should not die because `/soft` moved. The cost is that a failed
+`module load` is reported in **stderr** while the job keeps going under the
+system Python, so read the stderr file, not just stdout, when a run comes back
+with an import error.
+
+If you want a different environment — your own conda env, a container, a
+different module set — pass `setup_env=False` and set it up yourself. That is
+the supported way out; editing `commands` to re-export the proxy is not,
+because it leaves two copies to keep in step.
 
 **What you are grading is the verify step.** A correct run calls
 `stage_to_alcf`, polls `transfer_status` until `SUCCEEDED`, and only then
@@ -784,9 +908,14 @@ This is the one you take home. Point the agent at your code:
 Or, if you do not have the code yet, ask it to build the software:
 
 ```
-> Build LAMMPS on Polaris with the Kokkos CUDA backend, then run the
-> melt benchmark on 2 nodes.
+> Build LAMMPS (or QE, or CP2K) on Polaris with GPU support, then run
+> its 2-node benchmark.
 ```
+
+Nothing here is LAMMPS-specific. Quantum ESPRESSO, CP2K, NAMD, GROMACS, your
+group's own code — the prompt changes by a noun and the five stages do not move
+at all. If swapping the application changes anything beyond that noun, the
+thing you built is a LAMMPS script, not a skill.
 
 What changes, and what does not:
 
@@ -828,19 +957,20 @@ how you adopt a shared service without accepting it exactly as shipped.
 |---|---|
 | No tools appear, no permission prompt | You have `enabledMcpjsonServers` pinned in `~/.claude/settings.json`; a project `.mcp.json` server not named there is dropped silently. Add it, or set `"enableAllProjectMcpServers": true`. |
 | `/mcp` lists an `ask-alcf` server as `tools fetch failed · connected` | An old clone. There is no separate `ask-alcf` server any more. Claude Code's built-in `"type": "http"` client is Node, and Cloudflare 403s Node's TLS fingerprint at `tools/list` — "connected" is only the handshake. `git pull`: the current `.mcp.json` has one server, and documentation goes out over Python inside it. |
-| `/mcp` shows `alcf-iri` with **10** tools, not 11 | Same cause — a pre-consolidation clone, without `retrieve_alcf_docs`. The missing eleventh tool is the knowledge base. |
-| `alcf-iri` fails to start, or times out | Either you never ran `./setup.sh`, or you launched the agent from another directory so `../.venv/bin/python` did not resolve. Run setup, `cd` here, relaunch. |
-| `alcf-iri` starts, `retrieve_alcf_docs` works, every other tool 401s | Inference and IRI are separate tokens. Run `alcf-tokens test-token iri`. |
+| `/mcp` shows `alcf-mcp` with **10** tools, not 11 | Same cause — a pre-consolidation clone, without `retrieve_alcf_docs`. The missing eleventh tool is the knowledge base. |
+| `alcf-mcp` fails to start, or times out | Either you never ran `./setup.sh`, or you launched the agent from another directory so `../.venv/bin/python` did not resolve. Run setup, `cd` here, relaunch. |
+| `alcf-mcp` starts, `retrieve_alcf_docs` works, every other tool 401s | Inference and IRI are separate tokens. Run `alcf-tokens test-token iri`. |
 | `retrieve_alcf_docs` 403s | Cloudflare is rejecting your network's TLS fingerprint. The tool already goes out over Python's HTTP stack, which is the path most likely to be allowed; if it still fails, you are behind a proxy that re-terminates TLS. |
-| `globus endpoint local-id` prints nothing or errors | GCP setup never completed — `~/.globusonline/lta/client-id.txt` is missing. Re-run `./globusconnectpersonal -setup <setup-key>`. |
+| `globus endpoint local-id` prints nothing or errors | GCP setup never completed — `~/.globusonline/lta/client-id.txt` is missing. Re-run `./globusconnectpersonal` and complete the guided setup. |
 | UUID resolves, but transfers fail immediately | The endpoint is registered and **stopped**. `./globusconnectpersonal -status` should say `connected`; if not, `./globusconnectpersonal -start &`. |
 | Transfer fails with a consent or permission error | Missing `data_access` consent on the ALCF side. Re-run `alcf-tokens login --authorize-transfer home --authorize-transfer eagle`. |
-| Transfer succeeds but the file is not where you expected | GCP paths are relative to what the endpoint publishes, not your shell's `cwd`. Check your `-restrict-paths` value. |
+| `stage_to_alcf` refuses the destination before Globus sees it | The eagle path is a level too shallow. It must be `/eagle/alcf_training/<your-username>/<filename>` — the project root is shared, and a destination naming only a directory is rejected rather than guessed at. |
+| Transfer succeeds but the file is not where you expected | GCP paths are relative to what the endpoint publishes, not your shell's `cwd`. By default that is your whole home directory; check `~/.globusonline/lta/config-paths` if you narrowed it. |
 | `stage_to_alcf` returns a task ID, then the job finds no input files | The transfer had not finished. The tool returns when Globus *accepts* the task, not when bytes land — the agent must poll `transfer_status` to `SUCCEEDED` first. This is the failure [Example 3](#example-3--train-mnist-on-polaris) is built around. |
 | A staging tool raises a long "Globus needs an additional consent" message | Exactly what it says: run the `alcf-tokens login --authorize-transfer …` line in the error. The tool prints the scopes Globus asked for, so paste them into a support question if the login does not clear it. |
 | `local_endpoint` raises but `./globusconnectpersonal -status` says connected | The agent's server is running as a different user, or with a different `$HOME`, than the GCP install. Both read `~/.globusonline/lta/client-id.txt`. |
 | GCP will not install on ARM Linux | Globus ships no `aarch64` Linux build; the tarball is x86-64 only and needs emulation plus a 64-bit loader. Apple Silicon is fine — the macOS build handles it. |
-| The job dies immediately with a `conda` or `import torch` error | `conda activate` needs `profile.d/conda.sh` sourced first — see [Example 3](#example-3--train-mnist-on-polaris). |
+| The job dies with a `conda` or `import torch` error | The preamble's conda step failed and was non-fatal by design, so the job ran under the system Python. The reason is in **stderr**, not stdout — read the `.err` file beside `stdout_path`. If you passed `setup_env=False`, there was no preamble at all. |
 | Tools are listed but never called | Your model is not tool-capable. Check with `/model` (`/models` on opencode) and pick one the Inference Service advertises tool support for. |
 
 ## Where this goes
@@ -848,7 +978,26 @@ how you adopt a shared service without accepting it exactly as shipped.
 The same pattern — one MCP server per facility, an agent in front, skills for
 the judgment — is what Trinity runs as a multi-user platform across ALCF, NERSC
 and OLCF. The architecture on this page does not change when you scale it up;
-only the number of tool groups does.
+only the number of tool groups does. One conversation, shared by a researcher
+and an agent, fans out to Polaris and Aurora at ALCF, Frontier at OLCF, and
+Perlmutter at NERSC — and outlives the session, which is the part a chat window
+cannot do.
+
+Three things are added on the way from this directory to that platform, and
+none of them are new tools:
+
+- **Sessions that stay up.** The agent's memory of a campaign is not the chat
+  scrollback; it survives the browser tab closing and the job finishing
+  overnight.
+- **More than one person in front of it.** Concurrent users and agents share
+  the same platform rather than each running a private copy of the server on a
+  laptop.
+- **Skills and K-atoms per domain.** The judgment this session puts in
+  `skills/submit-job/SKILL.md` becomes a library, so the DFT convention and the
+  MD convention can disagree without either one being hard-coded into a tool.
+
+Introducing Trinity: [watch the introduction
+video](https://drive.google.com/file/d/1jyi89gKJMhVo0u-NS0k4AYMOqOZ3iHLD/view?usp=sharing).
 
 And because the Inference Service speaks the same APIs as the Genesis Mission
 Model Access Gateway (MAG), the same agent runs against AmSC facilities by
