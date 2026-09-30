@@ -17,8 +17,9 @@ command -v claude >/dev/null || curl -fsSL https://claude.ai/install.sh | bash
 # Point opencode at the ALCF Inference Service
 uvx alcf-ai agent configure opencode
 
-# Session 05's MCP servers run from this same .venv. Check they import now,
+# Session 05's MCP server runs from this same .venv. Check it imports now,
 # rather than surfacing later as an opaque "MCP server failed to start".
+# Importing alcf_mcp.py pulls in all three alcf_tools modules with it.
 (cd 05_Agentic_Workflows && ../.venv/bin/python - <<'EOF'
 import importlib.util, sys
 
@@ -26,12 +27,11 @@ for mod in ("fastmcp", "requests", "rich", "alcf_tokens", "globus_sdk"):
     if importlib.util.find_spec(mod) is None:
         sys.exit(f"FAILED: {mod} did not install")
 
-for script in ("alcf_mcp.py", "ask_alcf_proxy.py"):
-    spec = importlib.util.spec_from_file_location(script[:-3], script)
-    spec.loader.exec_module(importlib.util.module_from_spec(spec))
+spec = importlib.util.spec_from_file_location("alcf_mcp", "alcf_mcp.py")
+spec.loader.exec_module(importlib.util.module_from_spec(spec))
 
 import fastmcp
-print(f"OK  fastmcp {fastmcp.__version__}; session 05 MCP servers import cleanly.")
+print(f"OK  fastmcp {fastmcp.__version__}; session 05 MCP server imports cleanly.")
 EOF
 )
 

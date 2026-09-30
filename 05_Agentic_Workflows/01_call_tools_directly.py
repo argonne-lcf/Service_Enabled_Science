@@ -3,7 +3,7 @@
 # dependencies = ["fastmcp>=2.10,<5", "alcf-tokens", "requests", "rich"]
 # ///
 """
-Step 1: Call the MCP server without an agent in the way.
+Call the MCP server without an agent in the way.
 
 Before handing these tools to a model, see what the model will see. This
 connects to alcf_mcp.py as a client, lists the tools it advertises, and calls
