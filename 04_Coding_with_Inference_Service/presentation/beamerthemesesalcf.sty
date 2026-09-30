@@ -55,7 +55,7 @@
 \newlength{\sesalcf@bandht}   \setlength{\sesalcf@bandht}{0.127\paperheight}
 
 \newcommand*{\sesalcf@logo}[4]{%
-  \node[inner sep=0pt, anchor=south west]
+  \node[inner sep=0pt, outer sep=0pt, anchor=south west]
     at ([xshift=#2,yshift=#3]current page.south west)
     {\includegraphics[height=#4]{\sesalcfassetpath #1}};}
 
@@ -163,7 +163,7 @@
 % --- title page (pptx layout 1) --------------------------------------------
 \setbeamertemplate{title page}{%
   \begin{tikzpicture}[remember picture, overlay]
-    \node[inner sep=0pt, anchor=south west] at (current page.south west)
+    \node[inner sep=0pt, outer sep=0pt, anchor=south west] at (current page.south west)
       {\includegraphics[width=\paperwidth,height=\paperheight]{\sesalcfassetpath bg-title.png}};
     \fill[SESteal] ([yshift=-1.46cm]current page.north west) rectangle ++(\sesalcf@bar,-6.64cm);
     %% offsets differ by height so the three marks line up on their centres
@@ -194,12 +194,17 @@
 
 % --- section page (pptx layout 2) ------------------------------------------
 %% The picture stops short of the bottom, so the master's white background shows
-%% as a band holding the dark logos.
+%% as a band holding the dark logos.  The outer sep=0pt is load-bearing: TikZ's
+%% default (0.5\pgflinewidth = 0.2pt) shifts the node down and right, which
+%% leaves a white hairline along the top of the picture.  bg-section.png must
+%% also be a real PNG: a JPEG of the same artwork renders with ragged, blocky
+%% edges on the pixel bars (xdvipdfmx embeds it as JPEG and viewers resample
+%% it badly).
 \setbeamertemplate{section page}{%
   \begin{tikzpicture}[remember picture, overlay]
     \fill[white] ([xshift=\dimexpr\sesalcf@bar-\sesalcf@barin\relax]current page.south west)
       rectangle ++(\dimexpr\paperwidth-\sesalcf@bar+\sesalcf@barin\relax,\sesalcf@bandht);
-    \node[inner sep=0pt, anchor=north west]
+    \node[inner sep=0pt, outer sep=0pt, anchor=north west]
       at ([xshift=\dimexpr\sesalcf@bar-\sesalcf@barin\relax]current page.north west)
       {\includegraphics[width=\dimexpr\paperwidth-\sesalcf@bar+\sesalcf@barin\relax,
                         height=0.873\paperheight]{\sesalcfassetpath bg-section.png}};
@@ -353,10 +358,10 @@
 %% \begin{frame}[plain]\sesfullbleed[Title]{file}\end{frame}
 \newcommand{\sesfullbleed}[2][]{%
   \begin{tikzpicture}[remember picture, overlay]
-    \node[inner sep=0pt, anchor=south west] at (current page.south west)
+    \node[inner sep=0pt, outer sep=0pt, anchor=south west] at (current page.south west)
       {\includegraphics[width=\paperwidth,height=\paperheight]{#2}};
     \ifx\relax#1\relax\else
-      \node[anchor=north west, inner sep=0pt, text width=14cm, align=left]
+      \node[anchor=north west, inner sep=0pt, outer sep=0pt, text width=14cm, align=left]
         at ([xshift=\sesalcf@margin,yshift=-0.34cm]current page.north west)
         {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}#1};
     \fi

@@ -1,0 +1,18 @@
+# latexmk / minted build artifacts (removed by `make clean`)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.xdv
+*.pyg
+*.config.minted
+*.data.minted
+_minted-*/
+.tools

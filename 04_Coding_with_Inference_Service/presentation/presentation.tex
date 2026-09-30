@@ -3,7 +3,7 @@
 \usepackage[american]{babel}
 
 \usetheme[sectionpages]{sesalcf}
-\sesalcflight                % white content slides; \sesalcfdark for the navy family
+\sesalcflight % white content slides
 \usepackage{appendixnumberbeamer}
 \usepackage{ulem}
 \usepackage[newfloat]{minted}
@@ -26,12 +26,10 @@
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 \title{Vibecoding With ALCF Inference}
-\subtitle{Agentic coding workflows with open models on ALCF hardware}
+\subtitle{Programming with open-weight models on ALCF hardware}
 
-\date{\today}
+\date{September 30, 2026}
 \author{Ethan Wong}
-
-% the theme supplies the palette, backgrounds, logos and title/section pages
 
 \begin{document}
 
@@ -44,17 +42,26 @@
 \begin{frame}{What is Vibecoding?}
   \begin{itemize}
     \item Term coined by Andrej Karpathy (Feb 2025):
+      \pause
     \begin{quote}\small\itshape
-      \enquote{There's a new kind of coding I call \enquote*{vibe coding}, where you fully \\
-      give in to the vibes, embrace exponentials and forget that the code even exists.}
+      \enquote{There's a new kind of coding I call \enquote*{vibe coding},
+	    where you fully \\ give in to the vibes, embrace exponentials and
+	    forget that the code even exists.}
     \end{quote}
-    \item \textbf{Working definition:} you describe what you want in plain
-      language, and a \emph{coding agent} writes, runs, and debugs the code.
-      You steer by reviewing the results instead of typing every line.
-    \item You still do the hard part: deciding \emph{what} to build and
-      judging whether it is \emph{correct}.
-    \item For domain scientists: the barrier shifts from syntax to
-      specification and verification, skills you already have.
+      \pause
+    \item \textbf{In practice:} you describe what you want in plain language
+	    and a \emph{coding agent} writes, runs, and debugs the code. You
+		  iterate by \emph{reviewing the results} and
+		  \emph{re-prompting} instead hand-writing code.
+      \pause
+    \item Note that this doesn't absolve critical-thinking! You still need to
+	    do the hard work of discerning \emph{what} to make, how
+		  \emph{robust} it's built, and judging whether it is
+		  \emph{correct}.
+      \pause
+    \item For domain scientists: the barrier shifts from syntax and
+	    software-development expertise to specification and verification,
+		  skills you already have.
   \end{itemize}
 \end{frame}
 
@@ -62,10 +69,13 @@
   \begin{itemize}
     \item \textbf{2021--22:} IDE autocomplete brings Copilot
       suggestions into your editor, still line-by-line
-    \item \textbf{2022:} chat assistants. You copy/paste snippets from
+      \pause
+    \item \textbf{2022:} Chat assistants. You copy/paste snippets from
       the chat window, run everything, and fix every error
-    \item \textbf{2024--25:} terminal \emph{agents} that read/write files,
+      \pause
+    \item \textbf{2024--25:} Terminal \emph{agents} that read/write files,
       run shell commands, search the repo, observe errors, and self-correct
+      \pause
   \end{itemize}
   \vspace{0.5em}
   \centering
@@ -84,10 +94,42 @@
     \draw[-stealth, draw=SESteal] (observe) to[bend right=45]
       node[below, font=\scriptsize, text=SESgrey] {errors? refine and retry} (plan);
   \end{tikzpicture}\par
+  \pause
   \vspace{0.5em}
   \raggedright
-  The agent is now the \emph{executor}. You become the architect and
-  reviewer, like advising a tireless student.
+  The agent is now the \emph{executor}. You now focus on the overall
+	architecture and review.
+\end{frame}
+
+\begin{frame}{Anatomy of a Coding Agent}
+  \begin{itemize}
+    \item An \textbf{agent harness} is this read-eval-print loop as one
+      coherent piece of software\footnote{Exactly what you built in the
+      previous session!} with:
+      \pause
+    \begin{itemize}
+      \item \textbf{Tools:} read/edit/write files, run shell commands, search
+        the codebase, (sometimes) the web
+        \pause
+      \item \textbf{Loop:} model proposes action $\rightarrow$ tool executes
+        $\rightarrow$ output observed $\rightarrow$ repeat until done
+        \pause
+      \item \textbf{Guardrails:} approval prompts, sandboxing, git
+        \pause
+    \end{itemize}
+    \item Example popular harnesses. All support \emph{external providers}, so
+      they can point at ALCF Inference:
+    \begin{itemize}
+      \item \textbf{OpenCode} (what we'll demonstrate this session) and
+	      \textbf{Pi}, recommended in the ALCF docs
+      \item \textbf{Claude Code}, featured in the session right after
+        this one
+      \item \textbf{Codex}, OpenAI's in-house harness for their GPT model series
+        \pause
+      \item Additionally, there are community shims/proxies for anything else
+	      (see \texttt{alcf-proxy}, \texttt{llm-rosetta})
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \section{The ALCF Inference Service}
@@ -96,10 +138,16 @@
   \begin{itemize}
     \item \textbf{30+ open-weight models} on ALCF hardware,
       behind one OpenAI-compatible API
-    \item Authenticate with your \textbf{ANL/ALCF credentials} via Globus
-    \item Web UI: \url{https://inference.alcf.anl.gov}, or hit the API
+      \pause
+    \item The ALCF Inference Service is accessible with \emph{any} DOE lab
+	    credentials via Globus; today you should authenticate using your
+		  \textbf{ALCF} login.
+      \pause
+    \item Web UI: \url{https://inference.alcf.anl.gov}, or query the API
       directly
-    \item Billions of LLM tokens already served
+      \pause
+    \item Billions of LLM tokens for agents already served
+      \pause
   \end{itemize}
   \vspace{0.5em}
   \begin{table}
@@ -115,268 +163,371 @@
     \end{tabular}
   \end{table}
   \footnotetext{Streaming for these APIs is disabled on Sophia and
-    Metis; use Chat Completions or Minerva.}
-\end{frame}
-
-
-\section{Setting Up Your Harness}
-
-\begin{frame}{Anatomy of a Coding Agent}
-  \begin{itemize}
-    \item A \textbf{harness} is the terminal-native app wrapping the model
-      with a tool belt, a loop, and guardrails:
-    \begin{itemize}
-      \item \textbf{Tools:} read/edit/write files, run shell commands, search
-        the codebase, (sometimes) the web
-      \item \textbf{Loop:} model proposes action $\rightarrow$ tool executes
-        $\rightarrow$ output observed $\rightarrow$ repeat until done
-      \item \textbf{Guardrails:} approval prompts, sandboxing, git
-    \end{itemize}
-    \item Popular harnesses. All support \emph{external providers}, so
-      they can point at ALCF Inference:
-    \begin{itemize}
-      \item \textbf{OpenCode} (open source, today's default) and
-        \textbf{Pi}, recommended in the ALCF docs
-      \item \textbf{Claude Code}, featured in the session right after
-        this one
-      \item \textbf{OpenAI Codex}, and community shims/proxies for anything
-        else (\texttt{alcf-proxy}, \texttt{llm-rosetta})
-    \end{itemize}
-  \end{itemize}
+    Metis, use Chat Completions or Minerva instead}
 \end{frame}
 
 \begin{frame}{Picking a Model for Agents}
   \begin{itemize}
-    \item Agents \emph{talk} to models through \textbf{tool calling}: the
-      harness advertises tools (read file, run command, \dots), the model
+    \item Agents \emph{talk} to models through \textbf{tool calling}; the
+      harness advertises tools (read file, run command, \dots) and the model
       replies with structured calls
+      \pause
     \item Capability flags in the docs: \textbf{B}atch, \textbf{R}easoning,
       \textbf{T}ool calling, always \textbf{H}ot
+      \pause
     \item Agents need models with \textbf{T}; \textbf{R} improves planning;
       \textbf{H} avoids cold starts
+      \pause
   \end{itemize}
   \vspace{0.5em}
+  \setcounter{footnote}{0}
   \begin{table}
     \centering\footnotesize
-    \begin{tabular}{@{}llll@{}}
+    \begin{tabular}{@{}llll>{\raggedright\arraybackslash}p{4.6cm}@{}}
       \toprule
-      Model & Cluster & Flags & Why \\
+      Model (subset) & Cluster & Flags & Score\footnote{Artificial Analysis
+        Intelligence Index v4.3.2 (current), each model at its best
+        reasoning effort.} & Notes \\
       \midrule
-      \texttt{thinkingmachines/Inkling} & Minerva & RTH & capable 975B parameter model; strong tool use  \\
-      \texttt{openai/gpt-oss-120b} & Sophia & BRTH & solid default, strong tool use \\
-      \texttt{openai/gpt-oss-20b} & Sophia & BRTH & faster, lighter tasks \\
-      \texttt{google/gemma-4-31B-it} & Sophia & RTH & strong reasoning \\
-      \texttt{meta-llama/Llama-4-Scout-17B-16E-Instruct} & Sophia & BT & long context \\
+      \textbf{\texttt{inkling-bf16}} & Minerva & RTH & 25 & 975B MoE; recommended \\
+      \texttt{nemotron-3-ultra} & Minerva & RTH & 23 & 550B MoE, 1M context; near-tie \\
+      \texttt{openai/gpt-oss-120b} & Sophia & BRTH & 12 & batch + always hot; safe default \\
+      \texttt{gpt-oss-120b} & Minerva & RT & 12 & same model; not live on Minerva \\
       \bottomrule
     \end{tabular}
   \end{table}
-  \vspace{0.5em}
-  \footnotesize Full model list: \texttt{uvx alcf-ai ls-endpoints}. On Sophia,
-  non-hot models may take 10--15 min to cold-start; check the Web UI or
-  the \texttt{/jobs} endpoint.
 \end{frame}
 
+\section{Setting Up Your Harness}
+
 \begin{frame}[fragile]{Install the Agent}
-  \begin{itemize}
-    \item One-liners install to \texttt{\textasciitilde/.local/bin};
-      reload your shell afterwards
-  \end{itemize}
   \begin{minted}[fontsize=\footnotesize]{bash}
-# OpenCode (today's default)
+# OpenCode
 curl -fsSL https://opencode.ai/install | bash
 
 # Claude Code (next session!)
 curl -fsSL https://claude.ai/install.sh | bash
 
-# reload your shell afterwards (zsh: ~/.zshrc; or open a new terminal)
+# reload your shell afterwards (zsh: ~/.zshrc, or open a new terminal)
 source ~/.bashrc
   \end{minted}
+  \pause
   \begin{itemize}
-    \item Also available via \texttt{brew}, \texttt{apt}, etc.
-    \item Same ideas apply to Pi, Codex, and friends; see the
-      \texttt{\#agents} section of the ALCF Inference docs
+    \item These one-liners install to \texttt{\textasciitilde/.local/bin}.
+      \pause
+    \item Also available via \texttt{brew}, \texttt{apt}, etc.\footnote{See the
+      \texttt{\#agents} section of the ALCF Inference docs for other agents}
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{One-Command Configuration: \texttt{alcf-ai}}
+\begin{frame}[fragile]{Quick Configuration: \texttt{alcf-ai}}
   \begin{itemize}
-    \item \texttt{alcf-ai} logs you in, fetches your token, and writes the
-      provider config into your agent's settings
+    \item \texttt{alcf-ai} writes generates a provider config that
+      \textbf{refreshes your access token automatically}
   \end{itemize}
   \begin{minted}[fontsize=\footnotesize]{bash}
 # install uv if you don't have it
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# authenticate + configure (interactive Globus login on first use)
+# authenticate once, then write the agent config
+uvx alcf-tokens login
 uvx alcf-ai agent configure opencode
   \end{minted}
+  \pause
   \begin{itemize}
-    \item Supports \texttt{opencode}, \texttt{pi}, \texttt{codex},
+    \item Supports \texttt{opencode}, \texttt{pi}, \texttt{codex}, and
       \texttt{claude}
-    \item \textbf{Idempotent:} re-run it any time to embed a fresh token
+      \pause
+    \item \textbf{Set once:} the agent fetches a fresh token on demand, you
+      only need to re-run for new models or capabilities
+      \pause
     \item Need the raw token for a script? \\
       \texttt{export ALCF\_AI\_TOKEN="\$(uvx alcf-ai auth get-access-token)"}
   \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{What Just Got Configured?}
-  \begin{itemize}
-    \item OpenCode now knows about an ALCF provider
-      (\texttt{\textasciitilde/.config/opencode/opencode.jsonc}):
-  \end{itemize}
   \begin{minted}[fontsize=\tiny]{json}
 {
   "provider": {
-    "alcf-inference-service-sophia": {
+    "alcf-inference-service-sophia-vllm": {
       "npm": "@ai-sdk/openai-compatible",
       "options": {
         "baseURL": "https://inference-api.alcf.anl.gov/resource_server/sophia/vllm/v1",
-        "apiKey": "{env:ALCF_AI_TOKEN}"
+        "apiKey": "alcf-ai-auto-refresh"
       },
-      "models": {
-        "openai/gpt-oss-120b": { "name": "openai/gpt-oss-120b" }
-      }
+      "models": { "openai/gpt-oss-120b": {} }
     }
-  }
+  },
+  "plugin": [
+    ["alcf-ai-opencode-plugin",
+     { "tokenHelper": ["uvx", "alcf-tokens", "get-token", "inference"] }]
+  ]
 }
   \end{minted}
   \begin{itemize}
-    \item Claude Code is similar: \texttt{ANTHROPIC\_BASE\_URL} +
-      \texttt{ANTHROPIC\_AUTH\_TOKEN} in
-      \texttt{\textasciitilde/.claude/settings.json} (Minerva); full
-      snippet in the \texttt{\#agents} docs
+    \item OpenCode now knows about an ALCF provider
+      (\texttt{\textasciitilde/.config/opencode/opencode.jsonc}).
+      \pause
+    \item The plugin supplies a fresh token per-request for OpenCode.
   \end{itemize}
 \end{frame}
 
+
+\section{Working With the Agent}
+
 \begin{frame}{Your First Session}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.80\textwidth]{opencode-shots/crop-a.png}
+  \end{figure}
+  \pause
   \begin{itemize}
-    \item Run \texttt{opencode} inside your project; \texttt{/init} writes
-      an \texttt{AGENTS.md} that it reuses on later turns
-    \item The prompt box shows the active agent and model;
-      \texttt{ctrl+p} lists every command
+    \item Run \texttt{opencode} inside your project!
+      \pause
+    \item \texttt{Ctrl+P} lists every command
   \end{itemize}
   \vspace{0.4em}
-  \centering
-  \includegraphics[width=0.80\textwidth]{opencode-shots/crop-a.png}
+\end{frame}
+
+\begin{frame}[fragile]{Talking to the Agent: \texttt{@}, \texttt{!}, and \texttt{/}}
+  \begin{itemize}
+    \item \texttt{@} adds a file or folder to the message by fuzzy search:
+  \end{itemize}
+  \begin{minted}[fontsize=\footnotesize]{text}
+Refactor the error handling in @src/solve.py
+Compare our output to @reference/README.md
+  \end{minted}
+  \pause
+  \begin{itemize}
+    \item \texttt{!} runs a shell command and feeds the output back in:
+  \end{itemize}
+  \begin{minted}[fontsize=\footnotesize]{text}
+!git log --oneline -5
+  \end{minted}
+  \pause
+  \begin{itemize}
+    \item \texttt{/} runs an agent command.
+      \pause
+      \begin{itemize}
+        \item \texttt{/init} writes an \texttt{AGENTS.md} that it reuses on
+          later turns
+          \pause
+        \item Try \texttt{/models}, \texttt{/sessions}, and \texttt{/compact}!
+      \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Watching the Agent Work}
   \begin{itemize}
     \item Your prompt, the model's reasoning, and every \textbf{tool call}
-      land in one transcript
-    \item Here \texttt{Glob} found the file and \texttt{Read} opened it, so
+      show as a transcript in your terminal
+    \item Here \texttt{Grep} found the file and \texttt{Read} opened it, so
       you can audit exactly what it saw
   \end{itemize}
   \vspace{0.4em}
-  \centering
-  \includegraphics[width=0.85\textwidth]{opencode-shots/crop-b.png}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.82\textwidth]{opencode-shots/crop-b.png}
+  \end{figure}
 \end{frame}
 
-\begin{frame}{Plan First, Then Build: \texttt{Tab}}
+\begin{frame}{Plan First, Then Build}
   \begin{itemize}
     \item \texttt{Tab} switches between the \textbf{Build} and \textbf{Plan}
-      agents; the prompt box shows which is active
-    \item \textbf{Plan} cannot edit files: it only reads and proposes, so a
-      bad plan costs nothing
+      agents, the prompt box shows which is active
+    \item \textbf{Plan} mode does its best to only analyze and propose changes
   \end{itemize}
   \vspace{0.4em}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.80\textwidth]{opencode-shots/crop-c.png}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Subagents and Orchestration}
+  \begin{itemize}
+    \item \textbf{Primary} agents are what you \texttt{Tab} between.
+    \item \textbf{Subagents} are workers they delegate to, or that you call
+      with \texttt{@explore}
+    \item Built in: \texttt{general} (parallel units of work),
+      \texttt{explore} (read-only code search), \texttt{scout} (upstream docs)
+  \end{itemize}
+  \vspace{0.4em}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{opencode-shots/crop-subagent.png}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{opencode-shots/crop-subagent-child.png}
+    \end{column}
+  \end{columns}
+  \vspace{0.3em}
   \centering
-  \includegraphics[width=0.85\textwidth]{opencode-shots/crop-c.png}
+  \footnotesize the delegate, and the worker's own session (\texttt{Ctrl+X down})
+\end{frame}
+
+\begin{frame}[fragile]{Permissions}
+  \begin{itemize}
+    \item Every tool is gated \texttt{allow}, \texttt{ask}, or \texttt{deny} ---
+      \textbf{Plan} is just this, with edits and bash set to \texttt{ask}
+  \end{itemize}
+  \begin{minted}[fontsize=\footnotesize]{json}
+{
+  "permission": { "edit": "ask", "webfetch": "deny" },
+  "agent": { "reviewer": { "permission": {
+    "bash": { "*": "ask", "git diff": "allow" } } } }
+}
+  \end{minted}
+  \pause
+  \begin{itemize}
+    \item Bash rules take globs and the \textbf{last match wins}: put
+      \texttt{"*": "ask"} before \texttt{"git diff": "allow"}
+      \pause
+    \item \texttt{permission.task} gates which subagents an agent may call;
+      \texttt{--auto} approves everything you did not deny
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Review the Diff}
   \begin{itemize}
-    \item Every edit arrives as a \textbf{diff} with line numbers: red is
-      removed, green is added
-    \item Review the diff, not the summary. One increment per prompt, then
-      run the code
+    \item Every edit displays as a \textbf{diff} with line numbers, just like
+      in \texttt{git}
+    \item Review the diff alongside summaries. Make incremental changes with
+      each prompt, then test the code
   \end{itemize}
   \vspace{0.4em}
-  \centering
-  \includegraphics[width=0.85\textwidth]{opencode-shots/crop-d.png}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.85\textwidth]{opencode-shots/crop-d.png}
+  \end{figure}
 \end{frame}
 
 \begin{frame}{Undo and Restore}
   \begin{itemize}
     \item \texttt{/undo} reverts the last change and hands your original
-      prompt back so you can sharpen it
-    \item \texttt{/redo} (or \texttt{ctrl+x r}) puts it back; git stays your
-      real undo button
+      prompt back so you can amend it\footnote{git stays your
+      real undo button, though}
+    \item \texttt{/redo} (or \texttt{Ctrl+X r}) re-runs it
   \end{itemize}
-  \vspace{0.4em}
-  \centering
-  \includegraphics[width=0.85\textwidth]{opencode-shots/crop-e.png}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.85\textwidth]{opencode-shots/crop-e.png}
+  \end{figure}
 \end{frame}
 
+\begin{frame}[fragile]{Sessions and Sharing}
+  \begin{itemize}
+    \item A \textbf{session} is one conversation
+      \pause
+      \begin{itemize}
+        \item \texttt{/sessions} switches between them
+          \pause
+        \item \texttt{/new} starts a clean one
+          \pause
+      \end{itemize}
+    \item \texttt{/share} publishes the transcript and copies a link, which you
+      can import with \texttt{opencode import}
+      \pause
+      \begin{itemize}
+        \item Note: share links are \textbf{public}
+          \pause
+        \item A project config can set \texttt{"share": "disabled"} to prevent
+          this
+          \pause
+      \end{itemize}
+    \item \texttt{--continue} and \texttt{--session} resume from the CLI
+      \pause
+    \item \texttt{--fork} branches so the original stays intact
+  \end{itemize}
+\end{frame}
 
-\section{Vibecoding Effectively}
+\section{Effective Vibecoding}
 
-\begin{frame}{Trick 1: Vibe in Small Loops}
+\begin{frame}{Iterate in Small Loops}
   \begin{itemize}
     \item \textbf{Plan before you build:} ask the agent to read the code and
       propose a plan first; review it, then let it code
+      \pause
     \item \textbf{One feature per prompt:} small steps, run the code after
       every change, commit after every success
+      \pause
     \item \textbf{Don't fight a confused agent:} if it spirals, restate the
-      goal with clearer context, or start a fresh session instead
-      of piling on corrections
-    \item Git is your undo button; a clean history of small commits makes
-      every agent edit cheap to review or revert
+      goal with clearer context, or start a fresh session instead of piling on
+      corrections
+      \pause
+    \item Git is your undo button; a clean history of small commits makes every
+      agent edit cheap to review or revert
+      \pause
   \end{itemize}
   \vspace{0.8em}
   \centering
-  \textit{Manage the agent like a talented student: small, well-specified
-  tasks beat vague epics.}
+  \textit{Manage the agent like guiding a \emph{very} pedantic junior engineer!
+  Small, well-defined tasks can be easily accomplished over broad, unscoped
+  ideas.}
 \end{frame}
 
-\begin{frame}{Trick 2: Ground the Agent (Context is Everything)}
+\begin{frame}{Context is Everything}
   \begin{itemize}
     \item Keep an \textbf{instructions file} (\texttt{AGENTS.md},
       \texttt{CLAUDE.md}, \dots) at the repo root:
       project purpose, build/run/test commands, conventions, and
       no-go zones (\enquote*{never touch \texttt{src/legacy}})
+      \pause
     \item \textbf{Point, don't paste:} tell the agent which files matter
       and let it read/search the rest; pasted code goes stale
+      \pause
     \item \textbf{Fresh session per task:} long transcripts rot the
       model's working memory (the context window) and the agent's judgment
+      \pause
     \item Encode your \textbf{domain knowledge} explicitly: units, file
       formats, expected values, edge cases. The model cannot guess
       your physics.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Trick 3: Make Success Verifiable}
+\begin{frame}{Make Success Verifiable}
   \begin{itemize}
-    \item Agents shine when \emph{correctness is checkable}: tests,
+    \item Agents shine when \emph{correctness is checkable}; tests,
       linters, type checkers, a run script that prints a known result
-    \item \textbf{Failing-test-first:} \enquote{write a test that captures
-      the requirement, then make it pass}. Great for scientific code
-    \item Paste error messages back \emph{verbatim}; the agent reads its
-      own tracebacks far better than your paraphrase
-    \item For science: golden outputs, sanity-limit checks, property
-      tests. Verify numerics against results you trust.
+      \pause
+    \item \textbf{Failing-test-first:} \enquote{write a test that captures the
+      requirement, then make it pass}. Works extremely well for scientific
+      codes
+      \pause
+    \item Paste error messages back \emph{verbatim}; the agent can read
+      tracebacks without needing to paraphrase
+      \pause
+    \item For science: vetted outputs, sanity-limit checks, property tests.
+      Verify figures against results you know.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Trick 4: Stay in Control}
+\begin{frame}{Stay in Control}
   \begin{itemize}
-    \item \textbf{Review the diff, not the vibes:} you own what ships
-      (papers, repos, production)
-    \item Keep \textbf{humans on approval} for destructive or
-      far-reaching commands; sandbox the agent when you can
+    \item \textbf{Review the work!} Ultimately, you are responsible for what
+      ships (papers, repos, production)
+      \pause
+    \item Be cautious and \textbf{mandate human intervention} for destructive or
+      far-reaching tasks; sandbox the agent when you can
+      \pause
     \item \textbf{Never paste tokens or credentials} into a prompt;
       keep secrets out of transcripts
+      \pause
     \item Models \textbf{hallucinate}: invented APIs, imaginary flags,
       plausible-but-wrong physics. Verify imports, citations, and
-      numerics before they matter.
+      values. Don't blindly trust the agent!!!
+      \pause
     \item Know when \emph{not} to vibe: unverifiable correctness-critical
-      code, security-sensitive paths
+      code, security-sensitive paths, etc.
   \end{itemize}
 \end{frame}
 
 \section{Crash Course}
 
-\begin{frame}{Your Mission: Monte Carlo $\pi$, With a Copilot}
+\begin{frame}{Exercise: Vibecoded Monte Carlo $\pi$}
   \begin{columns}[T]
     \begin{column}{0.56\textwidth}
       \begin{itemize}
@@ -415,7 +566,7 @@ uvx alcf-ai agent configure opencode
   \end{columns}
 \end{frame}
 
-\begin{frame}[fragile]{Get Ready to Vibe}
+\begin{frame}[fragile]{Environment Setup}
   \begin{itemize}
     \item \textbf{Checklist:} \texttt{setup.sh} has already installed uv,
       OpenCode, and the Python environment, logged you in, and set up
@@ -423,16 +574,18 @@ uvx alcf-ai agent configure opencode
   \end{itemize}
   \begin{minted}[fontsize=\footnotesize]{bash}
 cd Service_Enabled_Science
-./setup.sh                    # safe to re-run; refreshes your token
+./setup.sh                    # safe to re-run; sets up env + agents
 source .venv/bin/activate     # numpy + matplotlib now on PATH
 
 mkdir -p ~/pi-demo && cd ~/pi-demo
 git init                      # your undo button
 opencode                      # pick inkling-bf16 (Minerva)
   \end{minted}
+  \pause
   \begin{itemize}
     \item Use a new, empty directory so the agent can't find the
       reference \texttt{solution.py}
+      \pause
     \item The full prompt and the follow-ups are in
       \texttt{04\_Coding\_with\_Inference\_Service/PROMPT.md}
   \end{itemize}
@@ -469,12 +622,16 @@ any errors before you report back.
     \begin{column}{0.46\textwidth}
       \begin{itemize}\small
         \item \textbf{Name the deliverable:} one file, one output
+          \pause
         \item \textbf{Pin the environment:} open models guess the
           environment wrong unless you tell them what's installed
-        \item \textbf{Spell out the science:} formulas, units,
-          and expected values; the model can't guess your physics
+          \pause
+        \item \textbf{Spell out the science:} formulas, units, and expected
+          values; the model struggles with niche domain knowledge
+          \pause
         \item \textbf{Describe the figure panel by panel:}
           \enquote{make it pretty} gives a generic plot
+          \pause
         \item \textbf{Build in a check:} the $3\sigma$ assert and
           \enquote{run it} let the agent fix its own mistakes
       \end{itemize}
@@ -506,6 +663,7 @@ any errors before you report back.
         \item Commit once it works
       \end{itemize}
     \end{column}
+    \pause
     \begin{column}{0.48\textwidth}
       \textbf{Then, one prompt at a time}
       \begin{itemize}\small
@@ -520,22 +678,33 @@ any errors before you report back.
   \end{columns}
 \end{frame}
 
-\begin{frame}{Troubleshooting}
-  \begin{itemize}
-    \item \textbf{Access tokens expire after 48 h:} re-run
-      \texttt{uvx alcf-ai agent configure <agent>}; re-authenticate at
-      Globus roughly every 30 days
-    \item \textbf{OpenAI Codex $\geq$ 0.95} speaks the Responses API only:
-      pin \texttt{0.94} or lower on Sophia/Metis, or point Codex at Minerva
-    \item \textbf{Responses and Messages streaming is disabled} on
-      non-Direct-API clusters (Sophia, Metis); use Chat Completions or
-      Minerva
-    \item \textbf{Metis tool-calling is flaky} (SambaNova sanitization);
-      prefer Sophia for agent workloads
-    \item \textbf{Cold starts on Sophia:} non-hot models can take
-      10--15 min to load, so prefer \textbf{H} models (check the Web UI
-      or \texttt{/jobs})
-  \end{itemize}
+\section{Going Further}
+
+\begin{frame}{Skills, MCP, Plugins, and more}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \item A \textbf{skill} is a folder with a \texttt{SKILL.md}: the agent
+          sees only its \texttt{name}, \texttt{description}, and can call the
+          \texttt{skill} tool when a task matches
+        \item An \textbf{MCP server} adds server-provided tools, declared in
+          \texttt{opencode.jsonc} under \texttt{mcp}
+        \item \textbf{Plugins} are JS/TS that extends \texttt{opencode}'s own
+          events, \texttt{alcf-ai-opencode-plugin} is one example
+        \item Misc built-ins: \texttt{"lsp": true} gives the agent diagnostics,
+          \texttt{"formatter": true} formats each edit
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{opencode-shots/crop-skill.png}
+    \end{column}
+  \end{columns}
+  \pause
+  \vspace{0.4em}
+  \footnotesize Next session uses Claude Code to demonstrate these
+  capabilities! MCP in \texttt{.mcp.json}, skills in
+  \texttt{\textasciitilde/.claude/skills/}.
 \end{frame}
 
 \appendix
