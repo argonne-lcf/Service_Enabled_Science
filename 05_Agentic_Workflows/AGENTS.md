@@ -5,7 +5,7 @@ gets wrong unprompted. Anything explained at length there is not repeated here.
 
 ## Call the tools, do not import them
 
-There is one MCP server, `alcf-iri`, with eleven tools. Call them as tools.
+There is one MCP server, `alcf-mcp`, with eleven tools. Call them as tools.
 
 Do **not** reach for Bash to do the same job — `python -c "from alcf_mcp import
 get_job_state, read_file, ..."` runs the same code with none of the guardrails,
@@ -13,7 +13,7 @@ produces no tool-call record the user can see, and re-implements polling badly.
 If a tool appears to be missing, say so and stop; do not route around it.
 
 `retrieve_alcf_docs` is the AskALCF knowledge base. There is no separate
-`ask-alcf` server — it is mounted into `alcf-iri` like everything else, so its
+`ask-alcf` server — it is mounted into `alcf-mcp` like everything else, so its
 absence from `/mcp` as its own entry is correct.
 
 ## Use the skill for anything that runs

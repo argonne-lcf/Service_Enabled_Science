@@ -34,7 +34,7 @@ from fastmcp import FastMCP
 
 from alcf_tools import docs, globus, iri
 
-mcp = FastMCP("alcf-iri")
+mcp = FastMCP("alcf-mcp")
 
 # No namespace argument: tool names pass through unchanged.
 mcp.mount(docs.mcp)

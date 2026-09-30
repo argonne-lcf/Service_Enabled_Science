@@ -490,7 +490,7 @@ Read that output carefully. It is what the model sees, and nothing else.
 
 ## Register the server with your agent
 
-`alcf_mcp.py` is already registered in both config files, as `alcf-iri`. Launch
+`alcf_mcp.py` is already registered in both config files, as `alcf-mcp`. Launch
 your agent from this directory and ask it to confirm:
 
 ```bash
@@ -505,7 +505,7 @@ You should get all eleven. A stdio server is a command plus its arguments —
 that is the whole entry:
 
 ```json
-"alcf-iri": {
+"alcf-mcp": {
   "type": "stdio",
   "command": "../.venv/bin/python",
   "args": ["alcf_mcp.py"]
@@ -634,7 +634,7 @@ Four things to notice:
   confidently, sometimes wrongly, and never from your config. `/model` reads
   the configuration. *Ask the system, not the model* is the same discipline
   every example below is built on.
-- **`/mcp` is the real check.** If `alcf-iri` is not listed there with its
+- **`/mcp` is the real check.** If `alcf-mcp` is not listed there with its
   eleven tools, nothing after this section will work — go to
   [Troubleshooting](#troubleshooting) before continuing.
 - **The Polaris question calls a tool.** It should be answered by
@@ -902,9 +902,9 @@ how you adopt a shared service without accepting it exactly as shipped.
 |---|---|
 | No tools appear, no permission prompt | You have `enabledMcpjsonServers` pinned in `~/.claude/settings.json`; a project `.mcp.json` server not named there is dropped silently. Add it, or set `"enableAllProjectMcpServers": true`. |
 | `/mcp` lists an `ask-alcf` server as `tools fetch failed · connected` | An old clone. There is no separate `ask-alcf` server any more. Claude Code's built-in `"type": "http"` client is Node, and Cloudflare 403s Node's TLS fingerprint at `tools/list` — "connected" is only the handshake. `git pull`: the current `.mcp.json` has one server, and documentation goes out over Python inside it. |
-| `/mcp` shows `alcf-iri` with **10** tools, not 11 | Same cause — a pre-consolidation clone, without `retrieve_alcf_docs`. The missing eleventh tool is the knowledge base. |
-| `alcf-iri` fails to start, or times out | Either you never ran `./setup.sh`, or you launched the agent from another directory so `../.venv/bin/python` did not resolve. Run setup, `cd` here, relaunch. |
-| `alcf-iri` starts, `retrieve_alcf_docs` works, every other tool 401s | Inference and IRI are separate tokens. Run `alcf-tokens test-token iri`. |
+| `/mcp` shows `alcf-mcp` with **10** tools, not 11 | Same cause — a pre-consolidation clone, without `retrieve_alcf_docs`. The missing eleventh tool is the knowledge base. |
+| `alcf-mcp` fails to start, or times out | Either you never ran `./setup.sh`, or you launched the agent from another directory so `../.venv/bin/python` did not resolve. Run setup, `cd` here, relaunch. |
+| `alcf-mcp` starts, `retrieve_alcf_docs` works, every other tool 401s | Inference and IRI are separate tokens. Run `alcf-tokens test-token iri`. |
 | `retrieve_alcf_docs` 403s | Cloudflare is rejecting your network's TLS fingerprint. The tool already goes out over Python's HTTP stack, which is the path most likely to be allowed; if it still fails, you are behind a proxy that re-terminates TLS. |
 | `globus endpoint local-id` prints nothing or errors | GCP setup never completed — `~/.globusonline/lta/client-id.txt` is missing. Re-run `./globusconnectpersonal` and complete the guided setup. |
 | UUID resolves, but transfers fail immediately | The endpoint is registered and **stopped**. `./globusconnectpersonal -status` should say `connected`; if not, `./globusconnectpersonal -start &`. |

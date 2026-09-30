@@ -14,7 +14,7 @@
     // four Globus staging tools, and six IRI calls. The IRI and Globus tools
     // need a valid token -- check with `alcf-tokens test-token iri`. The
     // documentation tool does not, so it answers even before you log in.
-    "alcf-iri": {
+    "alcf-mcp": {
       "type": "local",
       "command": ["../.venv/bin/python", "alcf_mcp.py"],
       "enabled": true,
