@@ -996,7 +996,8 @@ none of them are new tools:
   `skills/submit-job/SKILL.md` becomes a library, so the DFT convention and the
   MD convention can disagree without either one being hard-coded into a tool.
 
-Introducing Trinity: <https://trinityscience.org>.
+Introducing Trinity: [watch the introduction
+video](https://drive.google.com/file/d/1jyi89gKJMhVo0u-NS0k4AYMOqOZ3iHLD/view?usp=sharing).
 
 And because the Inference Service speaks the same APIs as the Genesis Mission
 Model Access Gateway (MAG), the same agent runs against AmSC facilities by
