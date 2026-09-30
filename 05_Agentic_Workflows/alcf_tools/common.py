@@ -48,8 +48,10 @@ MAX_STAGE_BYTES = 1024**3
 # user's script. So `submit_job` prepends them, the same way the limits above
 # are enforced instead of requested.
 PROXY = "http://proxy.alcf.anl.gov:3128"
-CONDA_MODULE = "conda/2025-09-28"
-CONDA_ROOT = "/soft/applications/conda/2025-09-28"
+# Pinned, not floating. `module load conda` resolves to whatever ALCF has made
+# the default that week, so an unpinned preamble silently changes the Python
+# under every attendee's job mid-workshop.
+CONDA_MODULE = "conda/2026-10-01"
 
 
 def job_preamble() -> str:
@@ -64,16 +66,18 @@ def job_preamble() -> str:
       right-hand side before it assigns any of them, so `https_proxy` would get
       whatever `http_proxy` held *before* the line ran, i.e. nothing.
 
-    * `module load ... || true`. Lmod emits warnings on a non-zero exit often
-      enough that a job with `set -e` dies on this line with a bare `exit 1`.
+    * `module use /soft/modulefiles` before the load. The conda modules are not
+      on the default MODULEPATH; without this line the load simply reports the
+      module as unknown.
 
-    * `source .../profile.d/conda.sh` before activating. `conda activate` is a
-      shell function defined by `conda init`, not a binary. Jobs do run under
-      `bash -lc`, so on an account that has run `conda init` the function
-      arrives via ~/.bash_profile and a bare `conda activate` appears to work
-      -- while on an account that has not, it is a silent no-op that leaves the
-      system Python in place and fails much later on an import. Sourcing the
-      profile script explicitly makes both accounts behave the same.
+    * `module load <pinned version>`, and nothing after it. This assumes the
+      module leaves you in its base environment. Older Polaris recipes follow
+      the load with `source .../profile.d/conda.sh && conda activate base`,
+      because `conda activate` is a shell function from `conda init` rather
+      than a binary -- a bare `conda activate` works on an account that has run
+      `conda init` and is a silent no-op on one that has not. If a job comes
+      back running the system Python and dying on an import, that source line
+      is what is missing; add it here rather than in anyone's `commands`.
 
     Failures here are deliberately non-fatal: nothing in this block is required
     by a job that does no networking and no Python, and it should not be able
@@ -84,8 +88,7 @@ def job_preamble() -> str:
         f"export http_proxy={PROXY}\n"
         f"export https_proxy={PROXY}\n"
         "module use /soft/modulefiles\n"
-        f"module load {CONDA_MODULE} || true\n"
-        f"source {CONDA_ROOT}/mconda3/etc/profile.d/conda.sh && conda activate base\n"
+        f"module load {CONDA_MODULE}\n"
     )
 
 

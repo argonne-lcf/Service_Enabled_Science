@@ -793,38 +793,41 @@ Notice how little `commands` contains. The interesting part is the block you
 export http_proxy=http://proxy.alcf.anl.gov:3128
 export https_proxy=http://proxy.alcf.anl.gov:3128
 module use /soft/modulefiles
-module load conda/2025-09-28 || true
-source /soft/applications/conda/2025-09-28/mconda3/etc/profile.d/conda.sh \
-  && conda activate base
+module load conda/2026-10-01
 ```
 
-Three real traps in six lines, and the reason they are in the *server* rather
-than in the skill: a prompt that has to be remembered is a prompt that will
-eventually be forgotten, and each of these fails quietly rather than loudly.
+Four lines, three of which exist because of something that fails *quietly*.
+That is also the reason they live in the *server* rather than in the skill: a
+prompt that has to be remembered is a prompt that will eventually be forgotten.
 
-- **`module load` returns non-zero** often enough that `set -e` will kill the
-  job before anything runs. Hence the `|| true`.
-- **`conda activate` may do nothing**, silently. It is a shell function
-  injected by `conda init`, not a binary. `submit_job` does run your commands
-  under `/bin/bash -lc`, so `~/.bash_profile` is sourced and the function
-  exists *if you have ever run `conda init`* — which is exactly what makes this
-  trap so hard to catch. It works on the account of whoever wrote the job and
-  is a no-op on everyone else's, with no error either way: the job runs under
-  the system Python and dies later on `import torch`. Sourcing
-  `profile.d/conda.sh` defines the function unconditionally.
 - **Compute nodes have no direct internet.** The first run downloads MNIST, and
-  that hangs forever without the proxy export.
+  that hangs until the walltime kills it — no error, no output — without the
+  proxy exports. Note the literal value twice: writing
+  `export http_proxy=... https_proxy=$http_proxy` on one line is a real bug,
+  because bash expands every right-hand side before it assigns any of them.
+- **The conda modules are not on the default `MODULEPATH`.** Without
+  `module use /soft/modulefiles`, the load just reports an unknown module.
+- **The version is pinned.** Bare `module load conda` resolves to whatever ALCF
+  has made the default that week, which is not something you want changing
+  under a room full of people midway through a workshop.
+
+There is no `conda activate` line here, on the assumption that the module
+leaves you in its base environment. Older Polaris recipes follow the load with
+`source .../profile.d/conda.sh && conda activate base`. That exists because
+`conda activate` is a shell function injected by `conda init`, not a binary:
+a bare `conda activate` works on an account that has run `conda init` and is a
+silent no-op on one that has not, which is a nasty way to differ between the
+presenter's laptop and yours. If your job comes back running the system Python,
+that source line is the thing to add — in `job_preamble()`, not in `commands`.
 
 Since `commands` is a string passed to `bash -lc`, there is no script file and
-no shebang: a `#!/bin/bash -l` line would just be a comment. You already have
-the login shell — which is exactly what makes the conda trap above so slippery.
+no shebang: a `#!/bin/bash -l` line would just be a comment.
 
 Nothing in the preamble is fatal if it fails. A job that needs neither Python
-nor the network should not die because `/soft` moved, so `module load` carries
-`|| true` and the `conda activate` hangs off `&&`. The cost is that a broken
-conda is reported in **stderr** and the job keeps going under the system
-Python, so read the stderr file, not just stdout, when a run comes back with an
-import error.
+nor the network should not die because `/soft` moved. The cost is that a failed
+`module load` is reported in **stderr** while the job keeps going under the
+system Python, so read the stderr file, not just stdout, when a run comes back
+with an import error.
 
 If you want a different environment — your own conda env, a container, a
 different module set — pass `setup_env=False` and set it up yourself. That is

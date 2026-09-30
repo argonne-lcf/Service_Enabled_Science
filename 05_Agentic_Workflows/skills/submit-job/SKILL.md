@@ -42,8 +42,8 @@ submit_job(system, commands, stdout_path, nodes=1, queue="debug",
 no file for it to be the first line of, so it would just be a comment.
 
 **The environment is already set up. Write `commands` as the work only.**
-`setup_env=True` (the default) prepends the proxy exports and the conda
-activation to your command block before it is submitted — see `job_preamble()`
+`setup_env=True` (the default) prepends the proxy exports and the pinned conda
+module load to your command block before it is submitted — see `job_preamble()`
 in `alcf_tools/common.py` for the exact lines and why each one is there. So:
 
 ```python
