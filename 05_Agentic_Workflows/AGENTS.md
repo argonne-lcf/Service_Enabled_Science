@@ -31,9 +31,10 @@ see `job_preamble()` in [`alcf_tools/common.py`](alcf_tools/common.py). Write
 
 ## The limits are in the server, not in the conversation
 
-`alcf_training` only, 2 nodes, 30 minutes, 500 staged files, 1 GiB. These are
-Python `raise`s in `common.py`. Do not try to talk past them or work around
-them — report the limit and ask a human to lift it.
+`alcf_training` only, 2 nodes, 30 minutes, 500 staged files, 1 GiB, and eagle
+writes only under `/eagle/<project>/<user>/` with the filename spelled out.
+These are Python `raise`s in `common.py`. Do not try to talk past them or work
+around them — report the limit and ask a human to lift it.
 
 ## Facility facts come from the facility
 

@@ -252,6 +252,21 @@ Single quotes matter: `$USER` has to expand on Polaris, not on your laptop,
 where it is very likely a different name. This is the only time in the session
 you log into Polaris by hand — everything after it goes through the agent.
 
+That per-user directory is not a convention you can skip. Everything staged to
+eagle has to land under `/eagle/<project>/<user>/`, and `stage_to_alcf` refuses
+anything shallower — see `_check_eagle_destination` in
+[`alcf_tools/common.py`](alcf_tools/common.py). The project directory is group
+writable, so without it a room of thirty people staging `train.py` in the same
+half hour overwrite each other, and the filesystem is perfectly happy to let
+them. Pass the full destination path including the filename
+(`…/<you>/mnist_pytorch.py`), not the directory it goes in.
+
+What that check does *not* do is confirm `<user>` is you. The server has no
+trustworthy way to know your ALCF username — it is often not your laptop
+username — and guessing wrong would block a real transfer in the middle of the
+session. It enforces the layout; the filesystem's own permissions are what
+enforce identity.
+
 ### What your endpoint exposes is a guardrail
 
 Started bare — `./globusconnectpersonal -start &`, with no other flag — GCP
@@ -288,7 +303,7 @@ three reasons:
 - **Scoped.** The server is a real boundary. `submit_job` refuses any account
   other than `alcf_training`, more than 2 nodes, and walltimes over 30 minutes;
   `stage_to_alcf` refuses more than 500 files or 1 GiB, and refuses eagle
-  writes outside `/eagle/alcf_training/`. Those are ordinary Python `raise`
+  writes outside `/eagle/<project>/<user>/`. Those are ordinary Python `raise`
   statements running before the HTTP request — the model cannot argue its way
   past them the way it can past an instruction in a prompt. They all live in
   one place, [`alcf_tools/common.py`](alcf_tools/common.py).
@@ -418,7 +433,7 @@ does the reasoning — so you can always check the citation.
 |---|---|
 | `local_endpoint` | Returns your GCP collection ID, read from `~/.globusonline/lta/client-id.txt` |
 | `globus_ls` | Lists a directory, `location="local"` or `location="alcf"` |
-| `stage_to_alcf` | Copies local → `/home/…` or `/eagle/alcf_training/…`, returns a task ID |
+| `stage_to_alcf` | Copies local → `/home/…` or `/eagle/alcf_training/<you>/…`, returns a task ID |
 | `transfer_status` | Polls that task ID until `SUCCEEDED` |
 
 The docstring on `stage_to_alcf` is doing real work:
@@ -568,7 +583,7 @@ name: submit-job
 description: Generate, stage over Globus, submit via IRI, monitor, report back.
 ---
 1. Generate the input locally; show it.
-2. stage_to_alcf -> /eagle/<project>/
+2. stage_to_alcf -> /eagle/<project>/<user>/
    Wait for SUCCEEDED. Never assume.
 3. get_system_status, then submit_job.
 4. Poll with backoff: 10s, then 30s.
@@ -766,7 +781,7 @@ The chain it runs:
 ```python
 stage_to_alcf(
   local_path="~/mnist_pytorch.py",
-  alcf_path="/eagle/alcf_training/<you>/")
+  alcf_path="/eagle/alcf_training/<you>/mnist_pytorch.py")
 transfer_status(task_id=...)      # poll to SUCCEEDED before submitting
 submit_job(system="polaris", nodes=1,
            commands="python /eagle/alcf_training/<you>/mnist_pytorch.py",
@@ -917,6 +932,7 @@ how you adopt a shared service without accepting it exactly as shipped.
 | `globus endpoint local-id` prints nothing or errors | GCP setup never completed — `~/.globusonline/lta/client-id.txt` is missing. Re-run `./globusconnectpersonal` and complete the guided setup. |
 | UUID resolves, but transfers fail immediately | The endpoint is registered and **stopped**. `./globusconnectpersonal -status` should say `connected`; if not, `./globusconnectpersonal -start &`. |
 | Transfer fails with a consent or permission error | Missing `data_access` consent on the ALCF side. Re-run `alcf-tokens login --authorize-transfer home --authorize-transfer eagle`. |
+| `stage_to_alcf` refuses the destination before Globus sees it | The eagle path is a level too shallow. It must be `/eagle/alcf_training/<your-username>/<filename>` — the project root is shared, and a destination naming only a directory is rejected rather than guessed at. |
 | Transfer succeeds but the file is not where you expected | GCP paths are relative to what the endpoint publishes, not your shell's `cwd`. By default that is your whole home directory; check `~/.globusonline/lta/config-paths` if you narrowed it. |
 | `stage_to_alcf` returns a task ID, then the job finds no input files | The transfer had not finished. The tool returns when Globus *accepts* the task, not when bytes land — the agent must poll `transfer_status` to `SUCCEEDED` first. This is the failure [Example 3](#example-3--train-mnist-on-polaris) is built around. |
 | A staging tool raises a long "Globus needs an additional consent" message | Exactly what it says: run the `alcf-tokens login --authorize-transfer …` line in the error. The tool prints the scopes Globus asked for, so paste them into a support question if the login does not clear it. |

@@ -11,6 +11,7 @@ from .common import (
     COLLECTIONS,
     MAX_STAGE_BYTES,
     _alcf_collection,
+    _check_eagle_destination,
     _consent_hint,
     _local_endpoint_id,
     _measure,
@@ -44,7 +45,9 @@ def globus_ls(path: str, location: str = "alcf") -> dict:
 
     `location="local"` lists `path` on the user's own machine through Globus
     Connect Personal; `location="alcf"` lists an absolute ALCF path such as
-    /home/<username>/ or /eagle/alcf_training/.
+    /home/<username>/ or /eagle/alcf_training/<username>/. Listing is not
+    restricted the way staging is -- /eagle/alcf_training/ on its own is a fine
+    thing to list, and a good way to find out whether your directory exists.
 
     Use this to confirm a destination exists before staging, and to verify the
     files actually arrived afterwards. Do not guess remote paths -- look.
@@ -75,19 +78,21 @@ def stage_to_alcf(local_path: str, alcf_path: str, recursive: bool = False) -> d
     """Copy a local file or directory to ALCF with Globus, and return a task ID.
 
     `local_path` is a path on the user's own machine; `alcf_path` is an absolute
-    ALCF path under /home/ or /eagle/alcf_training/. Set `recursive=True` for a
-    directory.
+    ALCF path under /home/ or, on eagle, under your own directory in the
+    project space: /eagle/alcf_training/<your-username>/. Set `recursive=True`
+    for a directory.
 
     This returns as soon as Globus accepts the task -- the bytes have NOT moved
     yet. Poll `transfer_status` until it reports SUCCEEDED before you submit a
     job that reads these files, or the job will start against files that are
     not there.
 
-    Refuses more than 500 files or 1 GiB; ask a human to lift those limits.
+    Refuses more than 500 files or 1 GiB, and refuses an eagle write outside
+    your own directory under the project; ask a human to lift those limits.
     """
     destination, remote_path = _alcf_collection(alcf_path)
-    if destination == COLLECTIONS["eagle"] and not remote_path.startswith("/alcf_training/"):
-        raise ValueError("Writes to eagle must land under /eagle/alcf_training/.")
+    if destination == COLLECTIONS["eagle"]:
+        _check_eagle_destination(remote_path)
 
     count, total = _measure(local_path, recursive)
     if total > MAX_STAGE_BYTES:

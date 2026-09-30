@@ -16,7 +16,13 @@ and still has to be cleaned up.
 ## 2. Stage it with Globus
 
 Call `stage_to_alcf(local_path, alcf_path)`. Eagle writes must land under
-`/eagle/<project>/`; for the workshop that project is `alcf_training`.
+`/eagle/<project>/<user>/`; for the workshop that project is `alcf_training`.
+Give the full destination path, filename included —
+`/eagle/alcf_training/<user>/train.py`, not the directory. The server rejects
+anything shallower, including a bare `/eagle/alcf_training/`, because the
+project directory is shared and group writable. If you do not know the
+username, ask for it rather than guessing; it is frequently not the same as
+the local one.
 
 Then poll `transfer_status(task_id)` until it reports `SUCCEEDED`. **A task ID
 is not a delivery.** If you submit before the transfer lands, the job runs

@@ -6,6 +6,7 @@ they live in one place rather than being restated three times.
 """
 
 import os
+import posixpath
 
 import globus_sdk
 import requests
@@ -40,6 +41,10 @@ MAX_WALLTIME_SEC = 30 * 60
 # entire home directory onto eagle by accident.
 MAX_STAGE_FILES = 500
 MAX_STAGE_BYTES = 1024**3
+# Everything staged to eagle lands in /eagle/<project>/<user>/. The project is
+# the allocation that owns the space; the per-user directory below it is what
+# keeps a room full of people staging `train.py` from overwriting each other.
+EAGLE_PROJECT = "alcf_training"
 
 # --- Compute-node environment -----------------------------------------------
 # Two things every Polaris job needs, and neither is discoverable from the node
@@ -130,6 +135,48 @@ def _alcf_collection(path: str) -> tuple[str, str]:
     raise ValueError("Path must be under /home/, /eagle/, or /lus/eagle/.")
 
 
+def _check_eagle_destination(remote_path: str) -> None:
+    """Require an eagle write to land under /eagle/<project>/<user>/.
+
+    `remote_path` is collection-relative, the second half of what
+    `_alcf_collection` returns: /eagle/alcf_training/you/run.sh arrives here as
+    /alcf_training/you/run.sh.
+
+    Three components are the minimum -- project, username, and something inside
+    it -- and the third is the one that is easy to get wrong. Two components
+    cannot be checked: `/alcf_training/bob` is a username, `/alcf_training/run.sh`
+    is a file sitting in the shared project root, and nothing about the strings
+    tells them apart. So the destination has to name a path *inside* a user
+    directory, which makes the ambiguous case a rejection rather than a coin
+    flip. Eagle's project directory is group writable, so nothing at the
+    filesystem layer stops thirty people from overwriting one another's
+    `train.py` in the same half hour; only this does.
+
+    This does not verify that <username> is *your* username -- the server has no
+    trustworthy way to know it, and guessing wrong would block a legitimate
+    transfer mid-workshop. It enforces the layout, not the identity.
+
+    The path is normalised before it is inspected, so `/alcf_training/you/../..`
+    is rejected rather than checked in its pre-collapse form. A guard that only
+    looks at the prefix is a guard you can walk out of with `..`.
+    """
+    parts = [p for p in posixpath.normpath(remote_path).split("/") if p and p != "."]
+    if not parts or parts[0] != EAGLE_PROJECT:
+        raise ValueError(
+            f"Writes to eagle must land under /eagle/{EAGLE_PROJECT}/<your-username>/. "
+            f"That path resolves outside the {EAGLE_PROJECT} project directory."
+        )
+    if len(parts) < 3:
+        raise ValueError(
+            f"Stage to a full path inside your own directory -- "
+            f"/eagle/{EAGLE_PROJECT}/<your-username>/<filename> -- not to "
+            f"/eagle/{'/'.join(parts)}. A destination one level short is either the "
+            f"shared project root or a directory that has to already exist; name the "
+            f"file. Create the directory once with: "
+            f"ssh <you>@polaris.alcf.anl.gov 'mkdir -p /eagle/{EAGLE_PROJECT}/$USER'"
+        )
+
+
 def _local_endpoint_id() -> str:
     """The UUID of the Globus Connect Personal collection on this machine.
 
@@ -204,6 +251,8 @@ __all__ = [
     "MAX_WALLTIME_SEC",
     "MAX_STAGE_FILES",
     "MAX_STAGE_BYTES",
+    "EAGLE_PROJECT",
+    "_check_eagle_destination",
     "_headers",
     "_resource_id",
     "_filesystem_id",
