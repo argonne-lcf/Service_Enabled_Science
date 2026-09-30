@@ -935,6 +935,19 @@ and an agent, fans out to Polaris and Aurora at ALCF, Frontier at OLCF, and
 Perlmutter at NERSC — and outlives the session, which is the part a chat window
 cannot do.
 
+Three things are added on the way from this directory to that platform, and
+none of them are new tools:
+
+- **Sessions that stay up.** The agent's memory of a campaign is not the chat
+  scrollback; it survives the browser tab closing and the job finishing
+  overnight.
+- **More than one person in front of it.** Concurrent users and agents share
+  the same platform rather than each running a private copy of the server on a
+  laptop.
+- **Skills and K-atoms per domain.** The judgment this session puts in
+  `skills/submit-job/SKILL.md` becomes a library, so the DFT convention and the
+  MD convention can disagree without either one being hard-coded into a tool.
+
 Introducing Trinity: <https://trinityscience.org>.
 
 And because the Inference Service speaks the same APIs as the Genesis Mission
