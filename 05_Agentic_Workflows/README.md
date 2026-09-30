@@ -858,9 +858,14 @@ This is the one you take home. Point the agent at your code:
 Or, if you do not have the code yet, ask it to build the software:
 
 ```
-> Build LAMMPS on Polaris with the Kokkos CUDA backend, then run the
-> melt benchmark on 2 nodes.
+> Build LAMMPS (or QE, or CP2K) on Polaris with GPU support, then run
+> its 2-node benchmark.
 ```
+
+Nothing here is LAMMPS-specific. Quantum ESPRESSO, CP2K, NAMD, GROMACS, your
+group's own code — the prompt changes by a noun and the five stages do not move
+at all. If swapping the application changes anything beyond that noun, the
+thing you built is a LAMMPS script, not a skill.
 
 What changes, and what does not:
 
@@ -922,7 +927,12 @@ how you adopt a shared service without accepting it exactly as shipped.
 The same pattern — one MCP server per facility, an agent in front, skills for
 the judgment — is what Trinity runs as a multi-user platform across ALCF, NERSC
 and OLCF. The architecture on this page does not change when you scale it up;
-only the number of tool groups does.
+only the number of tool groups does. One conversation, shared by a researcher
+and an agent, fans out to Polaris and Aurora at ALCF, Frontier at OLCF, and
+Perlmutter at NERSC — and outlives the session, which is the part a chat window
+cannot do.
+
+Introducing Trinity: <https://trinityscience.org>.
 
 And because the Inference Service speaks the same APIs as the Genesis Mission
 Model Access Gateway (MAG), the same agent runs against AmSC facilities by
