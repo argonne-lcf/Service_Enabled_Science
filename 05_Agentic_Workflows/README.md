@@ -7,13 +7,14 @@ Service-Enabled Science Workshop, 30 September 2026
 **Slides** — [`slides.pdf`](slides.pdf)
 
 A coding agent is only as useful on HPC as what it can *see* and *do* there.
-This session connects one to two **MCP servers** — a documentation server ALCF
-already runs, and one you write yourself in front of the Facility API from
-Session 01 — then teaches it your conventions with a *skill*.
+This session connects one to a single **MCP server** carrying three groups of
+tools — facility documentation, Globus data transfer, and the IRI compute API
+from Session 01 — then teaches it your conventions with a *skill*.
 
-**Goal** — leave with an agent that can answer "is Polaris up?", submit and
-monitor a real job under `alcf_training`, and follow your local rules while
-doing it, without you writing a REST call.
+**Goal** — leave with an agent that can answer "is Polaris up?", stage a file
+from your laptop to `/eagle`, submit and monitor a real job under
+`alcf_training`, and follow your local rules while doing it, without you
+writing a REST call.
 
 Session 03 ended with a challenge: *"Add a second tool. Write a new function to
 leverage the IRI API, describe it in `TOOLS`, and register it in
@@ -21,253 +22,318 @@ leverage the IRI API, describe it in `TOOLS`, and register it in
 Service so it could write code for you.
 
 This session closes the loop. Instead of hand-registering tools inside one
-script, we stand up an **MCP server** in front of the Facility API — and the
+script, we stand up an **MCP server** in front of those services — and the
 coding agent from Session 04 discovers every tool on it at startup.
 
 Nothing new is deployed at the facility. The agent is a new *caller* of
-services you already used by hand in `01_Facility_API/`.
-
-The split between the two servers is the point: one that ALCF already runs and
-you merely consume, and one you write to reach your own allocation.
+services you already used by hand in `01_Facility_API/` and
+`02_Globus_Compute_and_Transfer/`.
 
 ```
-                 Claude Code / opencode           <-- session 04
-                     |              |
-   MCP over HTTPS    |              |   MCP over stdio
-   (no token)        |              |   ("call submit_job(...)")
-                     v              v
-  ask.alcf.anl.gov/mcp        alcf_mcp.py  (this session)
-   ALCF/OLCF/NERSC docs             |
-   -- knowledge                     |  HTTPS + Bearer token from alcf-tokens
-                                    v
-                            ALCF Facility (IRI) API   <-- session 01
-                                    |
-                                    v
-                             Polaris / Crux
-                             -- reach
+              Claude Code / opencode              <-- session 04
+                          |
+                          |  MCP over stdio  ("call submit_job(...)")
+                          v
+                    alcf_mcp.py                   <-- this session
+                          |
+          +---------------+---------------+
+          |               |               |
+      docs.py         globus.py         iri.py
+      1 tool          4 tools           6 tools
+          |               |               |
+          v               v               v
+  ask.alcf.anl.gov   Globus Transfer   ALCF Facility (IRI) API
+   -- knowledge       -- data           -- reach          <-- session 01
+                          |               |
+                          +-------+-------+
+                                  v
+                           Polaris / Crux
 ```
 
-**Knowledge** tells the agent how Polaris works; **reach** lets it act. A skill
-supplies the third piece, judgment. Most of the frustration people have with
-coding agents on HPC is one of those three being missing.
-
-## Prerequisites
-
-Section 2 needs **none of this** — it is a public endpoint. If your token is
-not working yet, start there and sort out credentials while it runs.
-
-- A valid IRI token. Check with `alcf-tokens test-token iri`; if it is not
-  ready, run
-  `alcf-tokens login --authorize-transfer home --authorize-transfer eagle`.
-- A coding agent pointed at the Inference Service, from Session 04. If you
-  skipped it, `uvx alcf-ai agent configure opencode` is enough. Check the agent
-  launches and that `/models` lists an ALCF provider. **Pick a tool-calling
-  model** — this session is nothing but tool calls, and a model without tool
-  support will read the tool list and then ignore it.
-- Your ALCF username and the reservation queue announced at the start of the
-  workshop. The allocation is `alcf_training`.
-- A **Globus personal endpoint** running on your own machine — see
-  [below](#set-up-a-globus-personal-endpoint). Set this up before the session;
-  it is the one prerequisite you cannot fix in thirty seconds.
+**Knowledge** tells the agent how Polaris works; **data** gets your inputs
+there; **reach** lets it act. A skill supplies the fourth piece, judgment. Most
+of the frustration people have with coding agents on HPC is one of those four
+being missing.
 
 | File | Description |
 |---|---|
-| [`00_ask_alcf_docs.py`](00_ask_alcf_docs.py) | Consume a remote MCP server ALCF already runs — no token required |
-| [`ask_alcf_proxy.py`](ask_alcf_proxy.py) | A stdio forwarder to that server, as a fallback for clients Cloudflare 403s |
-| [`alcf_mcp.py`](alcf_mcp.py) | The MCP server: six IRI calls and four Globus staging tools, exposed as agent tools |
+| [`alcf_mcp.py`](alcf_mcp.py) | The MCP server — mounts all three tool groups into one |
+| [`alcf_tools/docs.py`](alcf_tools/docs.py) | ALCF Knowledge base: `retrieve_alcf_docs` (1 tool, no token) |
+| [`alcf_tools/globus.py`](alcf_tools/globus.py) | Globus data transfer: staging local → ALCF (4 tools) |
+| [`alcf_tools/iri.py`](alcf_tools/iri.py) | ALCF IRI: PBS submit / poll / read (6 tools) |
+| [`alcf_tools/common.py`](alcf_tools/common.py) | Facility IDs, path translation, and the guardrails |
+| [`00_ask_alcf_docs.py`](00_ask_alcf_docs.py) | Consume the remote MCP server ALCF already runs — no token required |
 | [`01_call_tools_directly.py`](01_call_tools_directly.py) | Connect as a client and see the tools the way a model sees them |
-| [`skills/polaris-job/SKILL.md`](skills/polaris-job/SKILL.md) | An example skill: the judgment that does not belong in a tool |
-| [`.mcp.json`](.mcp.json) | Both servers, pre-registered for Claude Code |
-| [`opencode.jsonc`](opencode.jsonc) | The same two servers, for opencode |
+| [`skills/submit-job/SKILL.md`](skills/submit-job/SKILL.md) | The skill: the judgment that does not belong in a tool |
+| [`mnist_pytorch.py`](mnist_pytorch.py) | The training script for Example 3 |
+| [`.mcp.json`](.mcp.json) | The server, pre-registered for Claude Code |
+| [`opencode.jsonc`](opencode.jsonc) | The same server, for opencode |
 
-## Setup
+---
 
-The repo-root [`setup.sh`](../setup.sh) covers this session too — it installs
-`fastmcp`, `requests` and `rich` into the shared `.venv` alongside the ALCF
-tooling, then checks both MCP servers import:
+## Step 1 — Agent core and credentials
+
+One clone, one login, one configure. Run these in order:
 
 ```bash
-cd ..  && ./setup.sh && cd 05_Agentic_Workflows
+git clone https://github.com/argonne-lcf/Service_Enabled_Science.git
+cd Service_Enabled_Science
+./setup.sh
+source .venv/bin/activate
+
+alcf-tokens login \
+  --authorize-transfer home \
+  --authorize-transfer eagle
+alcf-tokens test-token inference
+# {"ready": true, "error": null}
+
+uvx alcf-ai agent configure claude    # ...or: configure opencode
 ```
 
-Then start your agent **from this directory** and the two servers are already
+What each line buys you:
+
+- **`./setup.sh`** installs `uv`, builds the shared `.venv` with `fastmcp`,
+  `alcf-tokens`, `globus-sdk`, `requests` and `rich`, and checks the MCP server
+  imports.
+- **`alcf-tokens login`** opens a browser. Pick the **Argonne LCF** provider
+  and paste the code back. The two `--authorize-transfer` flags are what let
+  the agent write to `/home/` and `/eagle/` later — grant them now, not in
+  Step 2.
+- **`alcf-tokens test-token`** is the only proof a token works. Do it before
+  anything else fails confusingly. The IRI half is a separate token:
+  `alcf-tokens test-token iri`.
+- **`alcf-ai agent configure`** points the agent at the ALCF Inference Service.
+  **Pick a tool-calling model** — this session is nothing but tool calls, and a
+  model without tool support will read the tool list and then ignore it. Check
+  with `/model` (`/models` on opencode) once the agent is up — see
+  [Step 3](#step-3--first-contact-with-your-agent).
+
+You also need your ALCF username and the reservation queue announced at the
+start of the workshop. The allocation is `alcf_training`.
+
+Then start your agent **from this directory** and the server is already
 registered:
 
 ```bash
+cd 05_Agentic_Workflows
 claude      # or: opencode
 ```
 
 > **Why the config points at `../.venv/bin/python` and not `uv run`.** Your
-> agent spawns these servers as subprocesses and waits only a few seconds for
-> the MCP handshake — opencode's default is 5 s. Measured here: launching from
-> the pre-built `.venv` handshakes in **~0.5 s**, while a cold dependency
-> resolve took **~4 s** and pulled **104 MB** — inside the 5 s budget on a good
-> link, but with no margin, and that 104 MB is per person. With a roomful of
-> people hitting PyPI at once it is the difference between "ten tools" and an
+> agent spawns the server as a subprocess and waits only a few seconds for the
+> MCP handshake — opencode's default is 5 s. Measured here: launching from the
+> pre-built `.venv` handshakes in **~0.5 s**, while a cold dependency resolve
+> took **~4 s** and pulled **104 MB** — inside the 5 s budget on a good link,
+> but with no margin, and that 104 MB is per person. With a roomful of people
+> hitting PyPI at once it is the difference between "eleven tools" and an
 > unexplained "MCP server failed to start".
 
 The scripts also carry PEP 723 headers, so `uv run 00_ask_alcf_docs.py` still
 works standalone if you have not built the venv. That is fine when *you* are
 waiting; it is not fine when an agent is.
 
-Sections 2 and 4 walk through what the config files contain and how you would
-have written them by hand — read them even though the wiring is done, because
-the next server you add will be yours.
+## Step 2 — Globus data transfer
+
+Sessions 01–04 only ever acted on things already at the facility. This session
+goes the other way: the agent **generates input files on your machine and
+stages them to ALCF**. For that, your machine has to be a Globus collection —
+which is what Globus Connect Personal (GCP) makes it.
+
+`02_Globus_Compute_and_Transfer/` transferred `eagle` → `home`, both facility
+collections, so nothing there set this up. Do it before the session, not
+during: it involves a browser login.
 
 ### Set up a Globus personal endpoint
 
-Everything so far acts on things already at the facility. Later exercises go
-the other way: the agent **generates input files on your machine and stages
-them to ALCF**. For that, your machine has to be a Globus collection — which is
-what Globus Connect Personal (GCP) makes it.
+All of this is doable from the shell — no web console, and with
+`--no-local-server`, no browser on the machine you are setting up. That matters
+if your "laptop" for this session is a login node you reached over SSH.
 
-`02_Globus_Compute_and_Transfer/` transferred `eagle` → `home`, both facility
-collections, so nothing there set this up. Do it now, not during the session:
-it involves a browser login.
+**1. Authenticate the CLI.** This is separate from `alcf-tokens`: the `globus`
+CLI keeps its own tokens.
 
-Download and unpack:
+```bash
+globus login --no-local-server    # prints a URL; paste the code back
+```
 
-| Platform | Download |
-|---|---|
-| Linux | [`globusconnectpersonal-latest.tgz`](https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz) |
-| macOS | [`globusconnectpersonal-latest.dmg`](https://downloads.globus.org/globus-connect-personal/mac/stable/globusconnectpersonal-latest.dmg) |
-| Windows | [`globusconnectpersonal-latest.exe`](https://downloads.globus.org/globus-connect-personal/windows/stable/globusconnectpersonal-latest.exe) |
+**2. Register the collection.** This talks to the Globus service and prints a
+single-use **setup key**. It installs nothing:
 
-On Linux:
+```bash
+globus gcp create mapped "$USER-laptop"
+```
+
+**3. Install and start GCP.** Download it — Linux shown; macOS
+([`.dmg`](https://downloads.globus.org/globus-connect-personal/mac/stable/globusconnectpersonal-latest.dmg))
+and Windows
+([`.exe`](https://downloads.globus.org/globus-connect-personal/windows/stable/globusconnectpersonal-latest.exe))
+are the same two flags once installed:
 
 ```bash
 curl -LO https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz
-tar xzf globusconnectpersonal-latest.tgz
-cd globusconnectpersonal-*/
-```
-
-Register the collection. Go to
-[app.globus.org/collections/gcp](https://app.globus.org/collections/gcp),
-choose a name, and Globus hands you a **setup key**:
-
-```bash
+tar xzf globusconnectpersonal-latest.tgz && cd globusconnectpersonal-*/
 ./globusconnectpersonal -setup <setup-key>
+./globusconnectpersonal -start -restrict-paths rw~/ses-staging &
 ```
 
-Then start it. GCP has to be **running** for a transfer to move anything — a
-registered but stopped endpoint makes the transfer fail, not wait:
+GCP has to be **running** for a transfer to move anything — a registered but
+stopped endpoint makes the transfer fail, not wait. (`-restrict-paths` is
+explained [below](#what-your-endpoint-exposes-is-a-guardrail); use it from the
+first start rather than adding it later.)
+
+### Test it before you trust it
+
+Registered, installed and started are three different things, and each can
+succeed while the next has not. One command checks all three at once — plus
+that the path you restricted to is actually published:
 
 ```bash
-./globusconnectpersonal -start &
-```
-
-Verify both halves — the daemon, and what Globus thinks your UUID is:
-
-```bash
-./globusconnectpersonal -status      # expect: Globus Online: connected
-globus endpoint local-id             # from the tutorial .venv
+mkdir -p ~/ses-staging && touch ~/ses-staging/hello.txt
+globus ls "$(globus endpoint local-id):/~/ses-staging"
 ```
 
 ```
-Globus Online:   connected
-Transfer Status: idle
-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx     # yours will differ
+hello.txt
 ```
 
-**Do not write that UUID down.** The MCP server resolves it the same way
-`globus endpoint local-id` does — by reading `~/.globusonline/lta/client-id.txt`
-— so nothing you commit ever contains it. A skill with a per-person UUID pasted
-into it is a skill nobody else in the room can use, which defeats the point of
-§4's "config is per project, and committed."
+If you see `hello.txt`, the endpoint is registered with Globus, the daemon is
+running, your consents are good, and the directory is published. Anything else
+maps to a row in [Troubleshooting](#troubleshooting):
 
-Finally, confirm your transfer consents cover the ALCF collections. This is the
-same command as the first prerequisite, and it is idempotent:
+| What you get | What it means |
+|---|---|
+| `globus endpoint local-id` prints nothing | Step 3's `-setup` never completed |
+| A permission error, or an empty listing | GCP is running with different `-restrict-paths` |
+| A "not found" error | The path is wrong, or GCP publishes a different root |
+| It hangs, then times out | GCP is registered but **stopped** — `./globusconnectpersonal -start &` |
+| A consent error | Run `globus login --no-local-server` again |
+
+If you want the two halves separately, `./globusconnectpersonal -status`
+reports the daemon and `globus endpoint local-id` reports the UUID — but the
+`globus ls` above is the only one that proves the whole path end to end.
+
+**Do not write that UUID down.** The `local_endpoint` tool resolves it the same
+way `globus endpoint local-id` does — by reading
+`~/.globusonline/lta/client-id.txt` — so nothing you commit ever contains it,
+and you never paste a collection UUID into the chat. A skill with a per-person
+UUID in it is a skill nobody else in the room can use, which defeats the point
+of ["config is per project, and
+committed"](#register-the-server-with-your-agent).
+
+The ALCF side was already granted in Step 1. If you skipped those flags, the
+command is idempotent — run it now:
 
 ```bash
 alcf-tokens login --authorize-transfer home --authorize-transfer eagle
 ```
 
-#### What your endpoint exposes is a guardrail
+### What your endpoint exposes is a guardrail
 
-Started bare, GCP shares your **entire home directory, read-write**. You can
-narrow that to a single staging directory at launch:
+Started bare — `./globusconnectpersonal -start &`, with no other flag — GCP
+shares your **entire home directory, read-write**. That is why the start
+command above carries `-restrict-paths rw~/ses-staging`: it narrows the share
+to one directory, and it is the reason the test lists
+`/~/ses-staging` rather than `/~/`.
 
-```bash
-./globusconnectpersonal -start -restrict-paths rw~/ses-staging &
-```
-
-Do that once deliberately, because it is §1's argument one layer down: the
-agent cannot read or write a path the endpoint does not publish, whatever the
-model talks itself into. **The MCP server bounds what the agent can ask for;
-the endpoint bounds what your machine will hand over.** Two independent limits,
-and neither one is a sentence in a prompt that a model can reason its way past.
+Set it deliberately, because it is [the next
+section's](#what-mcp-actually-buys-you) argument one layer down: the agent
+cannot read or write a path the endpoint does not publish, whatever the model
+talks itself into. **The MCP server bounds what the agent can ask for; the
+endpoint bounds what your machine will hand over.** Two independent limits, and
+neither one is a sentence in a prompt that a model can reason its way past.
 
 ---
 
-## 1. What MCP actually buys you
+## What MCP actually buys you
 
 You could paste the IRI docs into a prompt and ask the model to write `requests`
 calls. People do. It works until it doesn't. MCP is worth the extra file for
 three reasons:
 
 - **Discovered, not hard-coded.** The agent asks the server what it can do. Add
-  a tool to `alcf_mcp.py` and the agent can use it on the next launch — no
+  a tool to `alcf_tools/` and the agent can use it on the next launch — no
   prompt edit, no code change on the agent side.
 - **Typed.** Each tool carries a JSON schema, so arguments are validated before
   anything leaves your laptop.
-- **Scoped.** The server is a real boundary. `alcf_mcp.py` refuses any account
-  other than `alcf_training`, more than 2 nodes, and walltimes over 30 minutes.
-  Those are ordinary Python `raise` statements running before the HTTP request —
-  the model cannot argue its way past them the way it can past an instruction in
-  a prompt.
+- **Scoped.** The server is a real boundary. `submit_job` refuses any account
+  other than `alcf_training`, more than 2 nodes, and walltimes over 30 minutes;
+  `stage_to_alcf` refuses more than 500 files or 1 GiB, and refuses eagle
+  writes outside `/eagle/alcf_training/`. Those are ordinary Python `raise`
+  statements running before the HTTP request — the model cannot argue its way
+  past them the way it can past an instruction in a prompt. They all live in
+  one place, [`alcf_tools/common.py`](alcf_tools/common.py).
 
 That last point is the one worth internalizing: **what you do not expose, the
 agent cannot do.** The MCP server is where your judgment about blast radius
 lives.
 
-## 2. Start with a server you did not write
+## One server, three tool groups
 
-Before building one, consume one. ALCF runs a public MCP server at
-**`https://ask.alcf.anl.gov/mcp`** that retrieves documentation across ALCF
-(Polaris, Aurora, Sophia), OLCF (Frontier, Summit), NERSC (Perlmutter) and
-LLNL, plus PBS, Slurm, CUDA, HIP, oneAPI, SYCL and OpenMP.
-
-It needs no token and no account. The URL is the entire configuration — which
-is why the Claude Code entry in [`.mcp.json`](.mcp.json) is four lines:
-
-```json
-"ask-alcf": { "type": "http", "url": "https://ask.alcf.anl.gov/mcp" }
-```
-
-Had you registered it by hand, it would be one command:
-
-```bash
-claude mcp add --transport http ask-alcf https://ask.alcf.anl.gov/mcp
-```
-
-Either way, launch the agent **from this directory** and ask:
-
-```bash
-claude      # or: opencode
-```
+Every server you register is another entry to configure, another process to
+launch, and another thing that can fail on an unfamiliar network. So this
+session ships **one** server with eleven tools, split into three modules that
+[`alcf_mcp.py`](alcf_mcp.py) mounts:
 
 ```
-> Using the ALCF docs, what queues can I submit to on Polaris,
-> and what are the node and walltime limits on each?
+alcf_mcp.py    mounts all three
+alcf_tools/
+  __init__.py  the tool map
+  common.py    IDs, paths, guardrails
+  docs.py      1 tool   ALCF Knowledge base
+  globus.py    4 tools  data transfer
+  iri.py       6 tools  compute
+skills/
+  submit-job/SKILL.md   the chain
 ```
 
-> **Claude Code asks permission the first time.** A checked-in `.mcp.json` is
-> executable configuration from a repo you cloned, so Claude Code prompts
-> before starting those servers. Answer yes. If you are never prompted *and*
-> the tools never appear, see [Troubleshooting](#troubleshooting).
+Mounting without a namespace keeps the tool names plain: the agent sees
+`submit_job`, not `iri_submit_job`, and the split is invisible from the
+outside.
 
-To see the same handshake without an agent in the way:
+### Group 1 — ALCF Knowledge base (no token)
+
+ALCF runs a public MCP server at **`https://ask.alcf.anl.gov/mcp`** that
+retrieves documentation across ALCF (Polaris, Aurora, Sophia), OLCF (Frontier,
+Summit), NERSC (Perlmutter) and LLNL, plus PBS, Slurm, CUDA, HIP, oneAPI, SYCL
+and OpenMP. It needs no token and no account — the URL is the entire
+configuration.
+
+[`alcf_tools/docs.py`](alcf_tools/docs.py) does not register it as a second
+server. It is a **client** of that server and re-exposes its one tool here:
+
+```python
+@mcp.tool()
+async def retrieve_alcf_docs(query: str, top_k: int = 3) -> str:
+    """Search ALCF, OLCF, NERSC and LLNL documentation, plus PBS, Slurm,
+    CUDA, HIP, oneAPI, SYCL and OpenMP. ..."""
+    async with Client(ASK_ALCF) as upstream:
+        result = await upstream.call_tool("retrieve_alcf_docs", {...})
+```
+
+**The server is also a client of another server.** That is the composition
+trick worth keeping. Once you own the middle you can log every question, cache
+repeats, or refuse some outright — in front of a service you do not operate.
+It is the same move that lets one agent sit in front of many facilities.
+
+It also buys three concrete things here:
+
+- **One entry in `.mcp.json` instead of two.**
+- **No token for this tool**, even though its neighbours all need one. Nothing
+  in `docs.py` touches `alcf-tokens`, so it answers before you have logged in.
+- **It routes around Cloudflare.** See below.
+
+To see the upstream handshake without an agent or this server in the way:
 
 ```bash
 ../.venv/bin/python 00_ask_alcf_docs.py
 ../.venv/bin/python 00_ask_alcf_docs.py "How do I request 4 GPUs on Polaris?"
 ```
 
-### ⚠️ If your client gets a 403, use the proxy
+#### ⚠️ Why going through Python matters: the Cloudflare edge
 
-The endpoint sits behind Cloudflare, which accepts or rejects clients by **TLS
-fingerprint** rather than by anything in the request. Measured from one network
-on 2026-09-28:
+`ask.alcf.anl.gov` sits behind Cloudflare, which accepts or rejects clients by
+**TLS fingerprint** rather than by anything in the request. Measured from one
+network on 2026-09-28:
 
 | Client | Direct to the URL |
 |---|---|
@@ -289,52 +355,15 @@ Two things worth drawing out, because both are counter-intuitive:
   the Node `fetch` result above does *not* predict it — opencode connects fine.
   Test the client you will actually run.
 
-So both supported agents *can* reach this server directly, and Claude Code's
-[`.mcp.json`](.mcp.json) does exactly that. [`opencode.jsonc`](opencode.jsonc)
-deliberately does **not** — it routes through the bundled stdio forwarder
-instead. That is a belt-and-braces choice for a live workshop: the table above
-was measured from one network, Cloudflare's edge can rule differently from the
-conference wifi, and the Python path is the one most likely to survive. Point
-opencode straight at the URL if you prefer; it works from here.
+Both supported agents *can* reach the server directly, and an earlier version
+of this session registered it as a second `http` entry. Reaching it through
+`docs.py` instead means the Cloudflare edge only ever sees Python's HTTP stack,
+which it accepts — for **every** client, including ones that would be 403'd.
+When a remote MCP endpoint is unreachable from your client but reachable from
+*some* runtime you have, wrapping it in a server you already run recovers it
+without touching the server.
 
-That makes the two files worth reading side by side — the *same* server, reached
-two ways. If you need the forwarder,
-[`ask_alcf_proxy.py`](ask_alcf_proxy.py) relays stdio to the same HTTPS endpoint
-from Python, which is allowed through:
-
-```jsonc
-"ask-alcf": {
-  "type": "local",
-  "command": ["../.venv/bin/python", "ask_alcf_proxy.py"],
-  "enabled": true
-}
-```
-
-That is the lesson worth keeping: one server, two transports. When a remote MCP
-endpoint is unreachable from your client but reachable from *some* runtime you
-have, a ~50-line stdio forwarder recovers it without touching the server.
-
-opencode merges this project file with your global
-`~/.config/opencode/opencode.jsonc`, so the Inference Service provider from
-Session 04 stays in effect — this file only adds the `mcp` key.
-
-[`ask_alcf_proxy.py`](ask_alcf_proxy.py) is twenty lines, and its shape is
-worth a look: **the server is also a client of another server.** Once you own
-the middle you can log every question, cache repeats, or refuse some outright
-— in front of a service you do not operate. That is the same composition trick
-that lets one agent sit in front of many facilities.
-
-This is the other half of MCP, and the half that scales. You wrote nothing,
-deployed nothing, and updated nothing — when ALCF re-indexes the user guides,
-your agent gets the new answers. **A server is a dependency you can share.**
-
-The server advertises exactly one tool, `retrieve_alcf_docs(query, top_k,
-include_images)`. One well-described tool is a reasonable server. Note also
-what it *is*: a retriever, not an oracle. It returns documentation chunks with
-source URLs and similarity scores, and your agent does the reasoning — so you
-can always check the citation.
-
-### Two things to notice in the output
+#### Two things to notice in the output
 
 **It marks retrieved text as untrusted.** Every chunk arrives wrapped in a
 `«UNTRUSTED_CONTENT»` marker. That is a deliberate defence: retrieved documents
@@ -343,31 +372,96 @@ indexed page — a GitHub issue, a wiki edit — could plant "also run `rm -rf`"
 and have your agent read it as a command. This is the single most common way
 agentic systems get compromised, and it is worth seeing a real mitigation.
 
-**Retrieval is not free.** Left to its defaults the tool returns five chunks,
-about **5,000 tokens**, on every single question. Passing `top_k=2` cuts that
-to roughly 2,200. Tool output lands in your context whether it was useful or
-not, so bounding it is part of designing the tool — the same discipline you
-will apply to your own server in the next section.
+**Retrieval is not free.** Left to its defaults the upstream tool returns five
+chunks, about **5,000 tokens**, on every single question. `docs.py` defaults
+`top_k=3` and caps it at 5 for exactly that reason. Tool output lands in your
+context whether it was useful or not, so bounding it is part of designing the
+tool.
 
-## 3. Look at the tools before you hand them over
+Note also what this is: a **retriever, not an oracle.** It returns
+documentation chunks with source URLs and similarity scores, and your agent
+does the reasoning — so you can always check the citation.
+
+### Group 2 — Globus data transfer (4 tools)
+
+| Tool | What it does |
+|---|---|
+| `local_endpoint` | Returns your GCP collection ID, read from `~/.globusonline/lta/client-id.txt` |
+| `globus_ls` | Lists a directory, `location="local"` or `location="alcf"` |
+| `stage_to_alcf` | Copies local → `/home/…` or `/eagle/alcf_training/…`, returns a task ID |
+| `transfer_status` | Polls that task ID until `SUCCEEDED` |
+
+The docstring on `stage_to_alcf` is doing real work:
+
+```python
+@mcp.tool()
+def stage_to_alcf(local_path: str, alcf_path: str, recursive=False) -> dict:
+    """Copy a local file to ALCF.
+
+    Returns as soon as Globus accepts the task -- the bytes have NOT moved
+    yet. Poll transfer_status until SUCCEEDED before submitting.
+    """
+```
+
+That warning is the failure this group exists to teach. Globus returns a task
+ID the instant it *accepts* the request. An agent that treats "I got a task ID"
+as "the files are there" submits a job against an empty directory, and the
+failure surfaces minutes later in a PBS stderr file, looking like a job bug
+rather than a staging bug.
+
+> **Two path vocabularies, one tool surface.** A Globus collection is rooted at
+> the filesystem it exports, so your `/home/you/run.in` is `/you/run.in` on the
+> `home` collection — and the Globus collection UUIDs are a different namespace
+> from the IRI filesystem UUIDs the compute tools use. `common.py` translates
+> both internally so every tool takes the same absolute POSIX path. That
+> bookkeeping is exactly the kind of thing to put in a server once, rather than
+> hope a model gets right on every call.
+
+### Group 3 — ALCF IRI for compute (6 tools)
+
+These wrap the same Session-01 REST calls you made by hand.
+
+| Tool | What it does |
+|---|---|
+| `get_system_status` | Polaris / Crux up? Current reservations |
+| `submit_job` | Submit a PBS job via IRI, return its ID |
+| `get_job_state` | Poll one job |
+| `list_jobs` | Filter by state, queue, owner; `historical=True` for finished jobs |
+| `cancel_job` | Stop a run |
+| `read_file` | Fetch stdout / stderr |
+
+```python
+@mcp.tool()
+def submit_job(system: str, commands: str, stdout_path: str, nodes=1,
+               queue="debug", account="alcf_training",
+               walltime_sec=600) -> dict:
+    """Submit a PBS job, return its ID.
+
+    Refuses accounts outside the workshop allocation, >2 nodes, or
+    walltimes over 30 minutes.
+    """
+```
+
+**The docstring *is* the tool description the model reads** — it is the entire
+basis on which the model decides whether a tool is relevant. A vague docstring
+is a bug, not a style problem.
+
+## Look at the tools before you hand them over
 
 ```bash
 ../.venv/bin/python 01_call_tools_directly.py polaris
 ```
 
 This launches `alcf_mcp.py` over stdio and performs the same handshake a coding
-agent performs, then calls one tool. You should see the ten tool names, their
-arguments, and the first line of each docstring.
+agent performs, then calls one tool. You should see all **eleven** tool names,
+their arguments, and the first line of each docstring.
 
-Read that output carefully. **The docstring is the tool description the model
-reads** — it is the entire basis on which the model decides whether a tool is
-relevant. A vague docstring is a bug, not a style problem.
+Read that output carefully. It is what the model sees, and nothing else.
 
-## 4. Register your own server with your agent
+## Register the server with your agent
 
-`alcf_mcp.py` is already registered in both config files — as `alcf-iri`, the
-second entry alongside `ask-alcf`. Launch your agent from this directory and
-ask it to confirm:
+`alcf_mcp.py` is already registered in both config files, as `alcf-iri`. Launch
+your agent from this directory and ask it to confirm:
 
 ```bash
 claude      # or: opencode
@@ -377,13 +471,21 @@ claude      # or: opencode
 > What ALCF tools do you have available?
 ```
 
-You should get the ten tools from section 3, plus `retrieve_alcf_docs`.
-
-A stdio server is a command plus its arguments — that is the whole entry:
+You should get all eleven. A stdio server is a command plus its arguments —
+that is the whole entry:
 
 ```json
-"alcf-iri": { "command": "../.venv/bin/python", "args": ["alcf_mcp.py"] }
+"alcf-iri": {
+  "type": "stdio",
+  "command": "../.venv/bin/python",
+  "args": ["alcf_mcp.py"]
+}
 ```
+
+> **Claude Code asks permission the first time.** A checked-in `.mcp.json` is
+> executable configuration from a repo you cloned, so Claude Code prompts
+> before starting the server. Answer yes. If you are never prompted *and* the
+> tools never appear, see [Troubleshooting](#troubleshooting).
 
 Three details in those files are worth knowing before you write your own:
 
@@ -397,59 +499,182 @@ Three details in those files are worth knowing before you write your own:
   downloading, and no network at spawn time. Startup is a design constraint on
   an MCP server in a way it never is on a script.
 - **Config is per project, and committed.** Anyone who clones this repo gets
-  the same two servers. That is how a group shares an agent setup — not by
-  passing a snippet around for people to paste into a dotfile.
+  the same server. That is how a group shares an agent setup — not by passing a
+  snippet around for people to paste into a dotfile.
+
+[`opencode.jsonc`](opencode.jsonc) is the same server for opencode, with one
+extra key: `"timeout": 30000`. opencode's default is 5 s, and a documentation
+call still has to reach `ask.alcf.anl.gov`. opencode merges this project file
+with your global `~/.config/opencode/opencode.jsonc`, so the Inference Service
+provider from Session 04 stays in effect — this file only adds the `mcp` key.
 
 If the tools do not show up, see [Troubleshooting](#troubleshooting) at the
 bottom of this page.
 
-## 5. Exercise 1 — explore read-only
+## Capture the chain: the `submit-job` skill
 
-Start with questions that cannot cost you anything:
+The tools exist. Something has to say in what *order* to use them — and by the
+third job you will have corrected the agent about the same thing two or three
+times: poll the transfer before submitting, put stdout somewhere writable, do
+not resubmit without asking. Retyping that every session is the actual cost of
+working this way.
 
+A **skill** is where it goes instead.
+
+- **A repeatable workflow, written down** — the steps you would otherwise
+  retype every session.
+- **Just a markdown file** — it diffs, reviews and ships like any other
+  artifact.
+- **The `description:` routes it** — the agent reads *only* that line when
+  deciding whether to load the skill at all. A description that does not name
+  the situation will never fire.
+
+[`skills/submit-job/SKILL.md`](skills/submit-job/SKILL.md) spans the whole
+chain in five stages:
+
+```yaml
+---
+name: submit-job
+description: Generate, stage over Globus, submit via IRI, monitor, report back.
+---
+1. Generate the input locally; show it.
+2. stage_to_alcf -> /eagle/<project>/
+   Wait for SUCCEEDED. Never assume.
+3. get_system_status, then submit_job.
+4. Poll with backoff: 10s, then 30s.
+5. Quote the stderr line, propose a fix, never resubmit on your own.
 ```
-> What's the status of Polaris and Crux right now?
-> How many jobs are queued under alcf_training on Polaris?
-> Show me the last five completed jobs on Crux.
-```
 
-Watch what the agent actually does, not just what it answers:
-
-- Which tool did it pick? Was it the cheapest one that could answer?
-- Did it invent a resource ID, or call `get_system_status` and read one off?
-- When you ask something the tools genuinely cannot answer, does it say so — or
-  does it produce a confident, fluent, wrong answer?
-
-Now try to break it. Ask about a system that does not exist. Ask for someone
-else's jobs. Ask for a number the API never returns.
-
-> **Why read-only first?** Not caution theatre. This is how you find out what
-> the model assumes *before* one of those assumptions costs node-hours.
-
-## 6. Exercise 2 — submit and monitor a real job
-
-Write a trivial script somewhere on `/home/<your-username>/`:
+Claude Code picks it up from this directory automatically. To make it available
+everywhere:
 
 ```bash
-cat > ~/hello_ses.sh <<'EOF'
-echo "Running on $(hostname) at $(date)"
-nvidia-smi --query-gpu=name --format=csv,noheader
-EOF
+mkdir -p ~/.claude/skills
+cp -r skills/submit-job ~/.claude/skills/
 ```
 
-Then ask, in plain language:
+Open the file and note what is in it: a polling cadence, an escalation rule, a
+table of common failures, the multi-node `mpiexec` gotcha. None of that belongs
+in the MCP server — it is judgment, not plumbing.
+
+### Tools vs. skills
+
+| | Tools (`alcf_tools/`) | Skills (`SKILL.md`) |
+|---|---|---|
+| What it is | Code the agent can run | Instructions the agent reads |
+| Enforced? | Yes — Python, before the call | No — guidance the model can ignore |
+| Put here | Capability and hard limits | Judgment, conventions, gotchas |
+| Fails how | Raises an exception | Model decides not to follow it |
+
+Put anything you actually need enforced in the tool, not the skill.
+
+---
+
+## Step 3 — First contact with your agent
+
+Everything up to here was setup and reading. Launch the agent and look around
+before you spend a single tool call:
+
+```bash
+source .venv/bin/activate
+claude                       # or: opencode
+# [shift + tab] -> auto mode
+```
+
+Then, in the session:
 
 ```
-> Run ~/hello_ses.sh on 1 Polaris node under alcf_training in the
-> reservation queue, write stdout to ~/hello_ses.out, and tell me when
-> it's done.
+> What model are you?
+
+/model    # what is actually configured
+/mcp      # the server and its tools
 ```
 
-The agent should resolve the account and queue, call `submit_job`, report the
-job ID, poll `get_job_state`, and then `read_file` the output. Ask it to show
-you the tool calls if your agent does not display them by default.
+On opencode the equivalents are `/models` and `/mcp`.
 
-**Then make it fail on purpose.** Point `stdout_path` at `/tmp`, or ask for 8
+Then ask it something it cannot answer on its own:
+
+```
+> How many nodes does Polaris have? What queues can I use?
+```
+
+Four things to notice:
+
+- **Its answer is a guess.** A model names itself from training data — often
+  confidently, sometimes wrongly, and never from your config. `/model` reads
+  the configuration. *Ask the system, not the model* is the same discipline
+  every example below is built on.
+- **`/mcp` is the real check.** If `alcf-iri` is not listed there with its
+  eleven tools, nothing after this section will work — go to
+  [Troubleshooting](#troubleshooting) before continuing.
+- **The Polaris question calls a tool.** It should be answered by
+  `retrieve_alcf_docs`, reading ALCF's live documentation. If no tool call
+  appears and you just get a number, you got training data — and the node
+  count, the queue names and the walltime limits have all changed since then.
+  A confident, sourceless answer here is the failure mode this whole session
+  is about.
+- **Auto mode stops asking.** Shift+Tab cycles Claude Code's permission mode,
+  and turning the confirmation prompt off is exactly why the limits that
+  matter live in the server rather than in your reflexes. This is the same
+  argument as ["what you do not expose, the agent cannot
+  do"](#what-mcp-actually-buys-you), now with the safety net removed.
+
+## Example 1 — check system status
+
+Read-only. Nothing here costs node-hours, which is the point: this is how you
+find out what the model assumes *before* one of those assumptions bills your
+allocation.
+
+```
+> What's the status of Polaris and Crux right now? How many jobs are
+> queued on Polaris, and what were the last five jobs to finish on Crux?
+```
+
+The calls it should make — watch which, and in what order:
+
+```python
+get_system_status(system="polaris")      # up / down, current reservations
+get_system_status(system="crux")
+list_jobs(system="polaris", states=["queued"])
+list_jobs(system="crux", limit=5, historical=True)
+```
+
+**What to watch for.** It should *list* resources before naming one. An
+invented resource ID is the first failure mode. Ask it to show you the tool
+calls if your agent does not display them by default.
+
+**Try to break it.** Ask about a system that does not exist. Ask for someone
+else's jobs. Ask for a number the API never returns. A good answer is "I can't
+tell you that."
+
+## Example 2 — a two-node smoke test
+
+The smallest job that proves the whole chain works.
+
+```
+> Run a 2-node smoke test on Polaris under alcf_training that prints the
+> hostname of every node, then show me the output when it lands.
+```
+
+The chain it runs:
+
+```python
+submit_job(system="polaris", nodes=2,
+           commands="mpiexec -n 2 --ppn 1 hostname",
+           queue="debug", account="alcf_training",
+           walltime_sec=600,
+           stdout_path="/home/<you>/smoke.out")
+get_job_state(system="polaris", job_id=...)   # poll
+read_file(path="/home/<you>/smoke.out")
+```
+
+No script to stage — the commands travel in the job spec. And plain `hostname`
+prints the head node *once*: two nodes allocated is not two nodes used.
+`mpiexec -n 2 --ppn 1` is what makes the second one answer. If the agent
+submits bare `hostname` and then reports "both nodes responded", it is reading
+one line and telling you about two.
+
+**Then make it fail on purpose.** Point `stdout_path` at `/tmp`, ask for 3
 nodes, or set the walltime to 5 seconds. What you are grading:
 
 - Does it quote the actual error, or paraphrase it as "the job failed"?
@@ -459,151 +684,140 @@ nodes, or set the walltime to 5 seconds. What you are grading:
 An agent that retries silently is not being helpful; it is spending your
 allocation without telling you.
 
-### Now make it use both servers
+Ask for three nodes and the *server* says no, not the model: `MAX_NODES = 2`
+lives in [`common.py`](alcf_tools/common.py), not in your prompt.
 
-With `ask-alcf` and `alcf-iri` both registered, ask a question that needs
-knowledge *and* reach:
+### Now make it use the knowledge base too
+
+Ask a question that needs knowledge *and* reach:
 
 ```
-> Look up how Polaris schedules GPU jobs, then submit ~/hello_ses.sh
+> Look up how Polaris schedules GPU jobs, then run the smoke test
 > accordingly under alcf_training. Cite the doc page you used.
 ```
 
-A good run reads the documentation, picks `-l select=1:ngpus=4` or the
-`filesystems` flag *because the docs said so*, submits, and cites the URL. This
-is the smallest complete agentic workflow in the tutorial: retrieve, decide,
-act, verify — with a checkable citation at the decision point.
+A good run reads the documentation, picks the queue or `filesystems` flag
+*because the docs said so*, submits, and cites the URL. This is the smallest
+complete agentic workflow in the tutorial: retrieve, decide, act, verify — with
+a checkable citation at the decision point.
 
 Watch for the failure mode too. If the agent submits without ever calling
 `retrieve_alcf_docs`, it is running on training-data memory of how Polaris
 worked whenever the model was trained. Ask it which tool it called. Queue names
 and limits change; the model's recollection of them does not.
 
-## 7. Exercise 3 — generate locally, stage, then run
+## Example 3 — train MNIST on Polaris
 
-Everything so far acted on files already at ALCF. Real work rarely starts
-there: you build inputs on your own machine and move them. That is the loop
-this exercise adds — **generate → stage → verify → submit**.
+The first example where the file does not already exist at ALCF. One prompt,
+all three tool groups.
 
-Four more tools on `alcf_mcp.py` cover the middle two steps:
+```
+> Stage mnist_pytorch.py to my eagle space, train it on one Polaris node,
+> and tell me the final test accuracy.
+```
 
-| Tool | What it does |
-|---|---|
-| `local_endpoint` | Returns your GCP collection ID, read from `~/.globusonline/lta/client-id.txt` |
-| `globus_ls` | Lists a directory, `location="local"` or `location="alcf"` |
-| `stage_to_alcf` | Copies local → `/home/…` or `/eagle/alcf_training/…`, returns a task ID |
-| `transfer_status` | Polls that task ID until `SUCCEEDED` |
+The chain it runs:
 
-Make a sweep worth transferring — not one file, or `scp` would be the honest
-answer:
+```python
+stage_to_alcf(
+  local_path="~/mnist_pytorch.py",
+  alcf_path="/eagle/alcf_training/<you>/")
+transfer_status(task_id=...)      # poll to SUCCEEDED before submitting
+submit_job(system="polaris", nodes=1,
+           commands=JOB, walltime_sec=1800,
+           stdout_path="/eagle/alcf_training/<you>/mnist.out")
+get_job_state(...)                # poll to completion
+read_file("/eagle/alcf_training/<you>/mnist.out")
+```
+
+[`mnist_pytorch.py`](mnist_pytorch.py) is a plain single-GPU PyTorch script —
+three epochs by default, well inside the 30-minute walltime ceiling. The
+interesting part is `JOB`, the command block, which is the part everyone gets
+wrong:
 
 ```bash
-mkdir -p ~/ses-staging/sweep
-for t in 300 400 500 600 700 800; do
-  printf 'temperature = %s\nsteps = 1000\n' "$t" > ~/ses-staging/sweep/run_$t.in
-done
+CONDA=/soft/applications/conda/2025-09-28
+module use /soft/modulefiles
+module load conda/2025-09-28 || true
+source $CONDA/mconda3/etc/profile.d/conda.sh
+conda activate
+export http_proxy=http://proxy.alcf.anl.gov:3128
+export https_proxy=$http_proxy
+cd /eagle/alcf_training/<you>
+python mnist_pytorch.py
 ```
 
-Then ask:
+Three real traps in nine lines:
 
-```
-> Stage ~/ses-staging/sweep to my ALCF home directory, confirm all six
-> input files arrived, and then run a job that cats each one.
-```
+- **`module load` returns non-zero** often enough that `set -e` will kill the
+  job before anything runs. Hence the `|| true`.
+- **`conda activate` does nothing** in a non-interactive shell unless you
+  source `profile.d/conda.sh` first — it is a shell function, not a binary.
+  Without it the job runs under the system Python and dies on `import torch`.
+- **Compute nodes have no direct internet.** The first run downloads MNIST, and
+  that hangs forever without the proxy export.
 
 **What you are grading is the verify step.** A correct run calls
 `stage_to_alcf`, polls `transfer_status` until `SUCCEEDED`, and only then
-submits. Globus returns a task ID the instant it accepts the request — the
-bytes have not moved yet. An agent that treats "I got a task ID" as "the files
-are there" submits a job against an empty directory, and the failure surfaces
-minutes later in a PBS stderr file, looking like a job bug rather than a
-staging bug.
-
-To see it, make the sweep big enough that the transfer takes a few seconds, or
-stop GCP (`./globusconnectpersonal -stop`) and watch whether the agent notices
-the transfer never succeeds — or reports success anyway.
+submits. To see the failure, stop GCP mid-run (`./globusconnectpersonal -stop`)
+and watch whether the agent notices the transfer never succeeded — or reports
+success anyway.
 
 Two other things worth watching:
 
 - **Did it look, or guess?** `globus_ls` exists so the agent can check a
   destination instead of inventing one. If it never calls it, the remote path
   came out of the model's head.
-- **Did it discover its own endpoint?** `local_endpoint` resolves your GCP
-  UUID at call time. An agent that asks *you* for the UUID has not read the
-  tool list carefully.
+- **Did it discover its own endpoint?** `local_endpoint` resolves your GCP UUID
+  at call time. An agent that asks *you* for the UUID has not read the tool list
+  carefully.
 
-> **Two path vocabularies, one tool surface.** A Globus collection is rooted at
-> the filesystem it exports, so your `/home/you/run.in` is `/you/run.in` on the
-> `home` collection — and the Globus collection UUIDs are a different namespace
-> from the IRI filesystem UUIDs the other tools use. `alcf_mcp.py` translates
-> both internally so every tool takes the same absolute POSIX path. That
-> bookkeeping is exactly the kind of thing to put in a server once, rather than
-> hope a model gets right on every call.
+## Example 4 — running your own workload
 
-The staging tools carry their own guardrails, in the same style as
-`submit_job`: writes to `eagle` must land under `/eagle/alcf_training/`, and a
-transfer is refused above 500 files or 1 GiB. Neither limit is Globus's — both
-are workshop policy, expressed as `raise`.
-
-## 8. Exercise 4 — capture the correction as a skill
-
-By now you have probably corrected the agent about the same thing two or three
-times: use `alcf_training`, put stdout under `/home/`, do not resubmit without
-asking. Retyping that every session is the actual cost of working this way.
-
-A **skill** is a markdown file the agent loads on demand:
+This is the one you take home. Point the agent at your code:
 
 ```
-~/.claude/skills/
-└── polaris-job/
-    └── SKILL.md
+> Stage ~/mycode to my eagle space, build it on a Polaris compute node,
+> and run the 2-node test case.
 ```
 
-Copy the example in and restart your agent:
+Or, if you do not have the code yet, ask it to build the software:
 
-```bash
-mkdir -p ~/.claude/skills
-cp -r skills/polaris-job ~/.claude/skills/
+```
+> Build LAMMPS on Polaris with the Kokkos CUDA backend, then run the
+> melt benchmark on 2 nodes.
 ```
 
-Open [`skills/polaris-job/SKILL.md`](skills/polaris-job/SKILL.md) and note what
-is in it: a polling cadence, an escalation rule, a table of common failures.
-None of that belongs in the MCP server — it is judgment, not plumbing.
+What changes, and what does not:
 
-The `description:` line in the frontmatter matters more than it looks. It is the
-routing signal — the agent reads *only* the description when deciding whether to
-load the skill at all. A description that does not name the situation will never
-fire.
+- **Same chain as before** — generate, stage, submit, monitor, report. Only the
+  payload is yours. That is what the skill is for.
+- **A build is just a job.** Make it show you the compiler line it chose and
+  the log it read, not a summary of them.
+- **The guardrails do not move.** Two nodes, 30 minutes, the training account —
+  a build that needs more of any of those needs a human, and the server will
+  say so.
 
-### Tools vs. skills
+The workload changes; the skill does not.
 
-| | Tools (`alcf_mcp.py`) | Skills (`SKILL.md`) |
-|---|---|---|
-| What it is | Code the agent can run | Instructions the agent reads |
-| Enforced? | Yes — Python, before the call | No — guidance the model can ignore |
-| Put here | Capability and hard limits | Judgment, conventions, gotchas |
-| Fails how | Raises an exception | Model decides not to follow it |
-
-Put anything you actually need enforced in the tool, not the skill.
-
-## 9. 🧪 Try it yourself
+## 🧪 Try it yourself
 
 **Add a tool for your own workload.** Pick one thing you do by hand on Polaris
-every week. Write it as a function in `alcf_mcp.py`, decorate it with
+every week. Write it as a function in `alcf_tools/iri.py`, decorate it with
 `@mcp.tool()`, write the docstring for the model, and relaunch. The agent finds
 it with no other change.
 
 **Add a guardrail and try to talk past it.** Restrict `submit_job` to a single
-queue, then spend five minutes trying to convince the agent to use another one.
-Then move the same restriction into `SKILL.md` instead and try again. The
-difference between those two experiments is the whole argument for putting
-limits in code.
+queue in `common.py`, then spend five minutes trying to convince the agent to
+use another one. Then move the same restriction into `SKILL.md` instead and try
+again. The difference between those two experiments is the whole argument for
+putting limits in code.
 
 **Chain two facilities.** `02_Globus_Compute_and_Transfer/` gives you a second
-execution path. Expose a Globus Compute function as a tool alongside the IRI
-tools and ask the agent to choose between them.
+execution path. Expose a Globus Compute function as a fourth tool group
+alongside the IRI tools and ask the agent to choose between them.
 
-**Put a policy in the middle.** `ask_alcf_proxy.py` forwards to a server you do
+**Put a policy in the middle.** `docs.py` already forwards to a server you do
 not run. Add something to the forwarder: log every query to a file, cache
 repeated ones, or prepend your group's local conventions to the result. This is
 how you adopt a shared service without accepting it exactly as shipped.
@@ -613,25 +827,28 @@ how you adopt a shared service without accepting it exactly as shipped.
 | Symptom | Cause |
 |---|---|
 | No tools appear, no permission prompt | You have `enabledMcpjsonServers` pinned in `~/.claude/settings.json`; a project `.mcp.json` server not named there is dropped silently. Add it, or set `"enableAllProjectMcpServers": true`. |
+| `/mcp` lists an `ask-alcf` server as `tools fetch failed · connected` | An old clone. There is no separate `ask-alcf` server any more. Claude Code's built-in `"type": "http"` client is Node, and Cloudflare 403s Node's TLS fingerprint at `tools/list` — "connected" is only the handshake. `git pull`: the current `.mcp.json` has one server, and documentation goes out over Python inside it. |
+| `/mcp` shows `alcf-iri` with **10** tools, not 11 | Same cause — a pre-consolidation clone, without `retrieve_alcf_docs`. The missing eleventh tool is the knowledge base. |
 | `alcf-iri` fails to start, or times out | Either you never ran `./setup.sh`, or you launched the agent from another directory so `../.venv/bin/python` did not resolve. Run setup, `cd` here, relaunch. |
-| `alcf-iri` starts, every tool 401s | Inference and IRI are separate tokens. Run `alcf-tokens test-token iri`. |
+| `alcf-iri` starts, `retrieve_alcf_docs` works, every other tool 401s | Inference and IRI are separate tokens. Run `alcf-tokens test-token iri`. |
+| `retrieve_alcf_docs` 403s | Cloudflare is rejecting your network's TLS fingerprint. The tool already goes out over Python's HTTP stack, which is the path most likely to be allowed; if it still fails, you are behind a proxy that re-terminates TLS. |
 | `globus endpoint local-id` prints nothing or errors | GCP setup never completed — `~/.globusonline/lta/client-id.txt` is missing. Re-run `./globusconnectpersonal -setup <setup-key>`. |
 | UUID resolves, but transfers fail immediately | The endpoint is registered and **stopped**. `./globusconnectpersonal -status` should say `connected`; if not, `./globusconnectpersonal -start &`. |
 | Transfer fails with a consent or permission error | Missing `data_access` consent on the ALCF side. Re-run `alcf-tokens login --authorize-transfer home --authorize-transfer eagle`. |
 | Transfer succeeds but the file is not where you expected | GCP paths are relative to what the endpoint publishes, not your shell's `cwd`. Check your `-restrict-paths` value. |
-| `stage_to_alcf` returns a task ID, then the job finds no input files | The transfer had not finished. The tool returns when Globus *accepts* the task, not when bytes land — the agent must poll `transfer_status` to `SUCCEEDED` first. This is the failure section 7 is built around. |
+| `stage_to_alcf` returns a task ID, then the job finds no input files | The transfer had not finished. The tool returns when Globus *accepts* the task, not when bytes land — the agent must poll `transfer_status` to `SUCCEEDED` first. This is the failure [Example 3](#example-3--train-mnist-on-polaris) is built around. |
 | A staging tool raises a long "Globus needs an additional consent" message | Exactly what it says: run the `alcf-tokens login --authorize-transfer …` line in the error. The tool prints the scopes Globus asked for, so paste them into a support question if the login does not clear it. |
 | `local_endpoint` raises but `./globusconnectpersonal -status` says connected | The agent's server is running as a different user, or with a different `$HOME`, than the GCP install. Both read `~/.globusonline/lta/client-id.txt`. |
 | GCP will not install on ARM Linux | Globus ships no `aarch64` Linux build; the tarball is x86-64 only and needs emulation plus a 64-bit loader. Apple Silicon is fine — the macOS build handles it. |
-| `ask-alcf` 403s in any client | Cloudflare is rejecting that client's TLS fingerprint from your network. Switch that entry to the stdio proxy (`["../.venv/bin/python", "ask_alcf_proxy.py"]`) — see §2. Do **not** add a browser `User-Agent`; it makes the 403 more likely, not less. |
-| Tools are listed but never called | Your model is not tool-capable. Switch with `/models` and pick one the Inference Service advertises tool support for. |
+| The job dies immediately with a `conda` or `import torch` error | `conda activate` needs `profile.d/conda.sh` sourced first — see [Example 3](#example-3--train-mnist-on-polaris). |
+| Tools are listed but never called | Your model is not tool-capable. Check with `/model` (`/models` on opencode) and pick one the Inference Service advertises tool support for. |
 
 ## Where this goes
 
-The same pattern — one MCP server per service, an agent in front, skills for the
-judgment — is what Trinity runs as a multi-user platform across ALCF, NERSC, and
-OLCF. The architecture on this page does not change when you scale it up; only
-the number of servers does.
+The same pattern — one MCP server per facility, an agent in front, skills for
+the judgment — is what Trinity runs as a multi-user platform across ALCF, NERSC
+and OLCF. The architecture on this page does not change when you scale it up;
+only the number of tool groups does.
 
 And because the Inference Service speaks the same APIs as the Genesis Mission
 Model Access Gateway (MAG), the same agent runs against AmSC facilities by

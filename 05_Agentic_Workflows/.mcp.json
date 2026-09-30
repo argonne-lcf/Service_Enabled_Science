@@ -1,10 +1,6 @@
 {
   "mcpServers": {
-    "ask-alcf": {
-      "type": "http",
-      "url": "https://ask.alcf.anl.gov/mcp"
-    },
-    "alcf-iri": {
+    "alcf-mcp": {
       "type": "stdio",
       "command": "../.venv/bin/python",
       "args": ["alcf_mcp.py"]

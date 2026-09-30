@@ -3,7 +3,7 @@
 # dependencies = ["fastmcp>=2.10,<5", "rich"]
 # ///
 """
-Step 0: Use an MCP server somebody else runs.
+Use an MCP server somebody else runs.
 
 ask.alcf.anl.gov/mcp is a public, remote MCP server that retrieves ALCF, OLCF,
 NERSC and LLNL documentation. No token, no install, no account -- the URL is
@@ -65,7 +65,8 @@ async def main(question: str) -> None:
               f"(~{total // 4} tokens) added to context[/dim]")
 
         # Note the «UNTRUSTED_CONTENT» marker in each chunk. Retrieved text is
-        # data, not instructions -- see README section 2.
+        # data, not instructions -- see the README, "Two things to notice in
+        # the output".
 
 
 if __name__ == "__main__":
