@@ -82,6 +82,8 @@ uvx alcf-ai agent configure claude
 
 The commands write the service endpoints and an API key to `~/.config/opencode/opencode.jsonc` and `~/.claude/settings.json`. Re-run them to refresh the key.
 
+**Note:** `alcf-ai` v0.16.0 and earlier overwrote an existing agent config whenever it failed to parse, silently discarding your settings. Fixed in v0.17.0: `configure` now leaves an unreadable config untouched and saves a `<name>.bak.<timestamp>` backup before changing a file. Run `uvx alcf-ai@latest ...` to pick up the fix.
+
 ## Alternative Environment Setups
 
 You will need a Python 3.10+ environment with the [`alcf-tokens`](https://pypi.org/project/alcf-tokens/) and [`alcf-ai`](https://pypi.org/project/alcf-ai/) packages installed.  
